@@ -306,9 +306,113 @@ Tags mark specific commits as release points. They are used for semantic version
 ### Screenshot
 ![Task 4 — tags](./screenshots/lab_2_7.png)
 
-
 ## Task 5 — git switch vs git checkout vs git restore
 
+### git switch (modern, branch switching)
+
+```bash
+git switch -c cmd-compare
+git branch --show-current
+git switch -
+git branch --show-current
+````
+
+```text
+Switched to a new branch 'cmd-compare'
+cmd-compare
+Switched to branch 'feature/lab2'
+feature/lab2
+```
+
+### git checkout (legacy, overloaded)
+
+```bash
+git checkout -b cmd-compare-2
+git branch --show-current
+git switch feature/lab2
+```
+
+```text
+Switched to a new branch 'cmd-compare-2'
+cmd-compare-2
+Switched to branch 'feature/lab2'
+```
+
+### git restore (modern, file operations)
+
+#### Discard working tree changes
+
+```bash
+echo "original" > demo.txt
+git add demo.txt
+git commit -m "chore: add demo file for restore"
+
+echo "scratch" >> demo.txt
+git status
+git restore demo.txt
+git status
+type demo.txt
+```
+
+```text
+Changes not staged for commit:
+  modified:   demo.txt
+```
+
+```text
+original
+```
+
+#### Unstage changes (keep working tree)
+
+```bash
+echo "staged change" >> demo.txt
+git add demo.txt
+git status
+git restore --staged demo.txt
+git status
+```
+
+```text
+Changes to be committed:
+  modified:   demo.txt
+```
+
+```text
+Changes not staged for commit:
+  modified:   demo.txt
+```
+
+#### Restore from another commit
+
+```bash
+git add demo.txt
+git commit -m "chore: update demo file"
+
+echo "junk" >> demo.txt
+git restore --source=HEAD~1 demo.txt
+type demo.txt
+```
+
+```text
+original
+```
+
+### When to use each
+
+Use `git switch` for creating and switching branches because it is focused only on branch operations and reduces ambiguity.
+Use `git restore` for undoing file changes (discard working tree edits, unstage, restore from a commit) because it cleanly separates file operations from branch switching.
+`git checkout` is legacy and overloaded (branches + files), so it is easier to misuse; prefer `switch/restore` in modern workflows.
+
+
+### Screenshot
+![Task 5 — restore status changes](./screenshots/lab_2_8.png)
+
 ## Task 6 — GitHub Community Engagement
+
+
+
+
+
 
 ## Challenges & Solutions
