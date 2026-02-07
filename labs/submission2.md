@@ -67,7 +67,7 @@ committer Batsiev Oleg <122930346+zv3zdochka@users.noreply.github.com> 177046461
 rename 1 lab screenshots
 ```
 
-**Inspect tree object content (root tree referenced by commit)**
+**Inspect tree object content**
 
 ```bash
 git cat-file -p bc3fdac9ed1c923ddb4d97cc1cbc9eb2f76da041
@@ -82,6 +82,10 @@ git cat-file -p bc3fdac9ed1c923ddb4d97cc1cbc9eb2f76da041
 100644 blob 418a98ced2ac70b5bdee0be9732ecdaae7264515    test.txt
 ```
 
+### Screenshots
+![Task 1 — cat-file](./screenshots/lab_2_1.png)
+![Task 1 — ls-tree ](./screenshots/lab_2_2.png)
+![Task 1 — (cat-file -p HEAD)](./screenshots/lab_2_3.png)
 
 
 
