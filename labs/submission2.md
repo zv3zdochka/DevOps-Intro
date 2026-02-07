@@ -21,7 +21,7 @@ echo "Test content" > test.txt
 git add test.txt
 git commit -m "Add test file"
 git log --oneline -1
-````
+```
 
 ```text
 31c58a9 (HEAD -> feature/lab2) Add test file
@@ -87,20 +87,141 @@ git cat-file -p bc3fdac9ed1c923ddb4d97cc1cbc9eb2f76da041
 ![Task 1 — ls-tree ](./screenshots/lab_2_2.png)
 ![Task 1 — (cat-file -p HEAD)](./screenshots/lab_2_3.png)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## Task 2 — Reset and Reflog Recovery
+
+### 2.1 Practice branch and commits
+
+```bash
+git switch -c git-reset-practice
+echo "First commit" > file.txt
+git add file.txt
+git commit -m "First commit"
+echo "Second commit" >> file.txt
+git add file.txt
+git commit -m "Second commit"
+echo "Third commit" >> file.txt
+git add file.txt
+git commit -m "Third commit"
+```
+
+**State after creating commits**
+
+```bash
+git log --oneline -3
+```
+
+```text
+4930492 (HEAD -> git-reset-practice) Third commit
+18c9b06 Second commit
+7cb6166 First commit
+```
+
+---
+
+### 2.2 Reset modes
+
+#### A) `git reset --soft HEAD~1`
+
+**Commands**
+
+```bash
+git reset --soft HEAD~1
+git log --oneline -3
+git status
+git diff --cached
+```
+
+**Outputs**
+
+```text
+18c9b06 (HEAD -> git-reset-practice) Second commit
+7cb6166 First commit
+```
+
+```text
+Changes to be committed:
+  modified: file.txt
+```
+
+**Explanation**
+
+* **History:** HEAD moved back by one commit.
+* **Index:** changes from the removed commit remained staged.
+* **Working tree:** unchanged.
+
+---
+
+#### B) `git reset --hard HEAD~1`
+
+Before applying hard reset, the removed commit was recreated:
+
+```bash
+git commit -m "Recommit third (after soft reset)"
+```
+
+Then:
+
+```bash
+git reset --hard HEAD~1
+git log --oneline -3
+git status
+```
+
+```text
+18c9b06 (HEAD -> git-reset-practice) Second commit
+7cb6166 First commit
+```
+
+**Explanation**
+
+* **History:** last commit was removed.
+* **Index:** cleared.
+* **Working tree:** reset to match HEAD.
+
+---
+
+#### C) Recovery using `git reflog`
+
+```bash
+git reflog -10
+```
+
+```text
+4930492 HEAD@{3}: commit: Third commit
+1988c9c HEAD@{1}: commit: Recommit third (after soft reset)
+18c9b06 HEAD@{0}: reset: moving to HEAD~1
+```
+
+**Recovery**
+
+```bash
+git reset --hard 4930492
+```
+
+**Analysis**
+Reflog stores previous positions of HEAD even after destructive operations like `reset --hard`.
+By selecting the appropriate reflog entry, the lost commit history can be fully restored.
+
+
+
+### Screenshots
+![Task 2 — commits](./screenshots/lab_2_4.png)
+![Task 1 — git reflog](./screenshots/lab_2_5.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## Task 3 — Visualize Commit History
 
