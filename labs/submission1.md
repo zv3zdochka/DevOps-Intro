@@ -24,8 +24,8 @@ It moves the project from "this commit claims to be from person X" to "this comm
 
 * Evidence of successful SSH key setup and signed commit.
 
-  ![SSH Key Setup](screenshots/img_1.png)
-  ![Signed Commit](screenshots/img_2.png)
+  ![SSH Key Setup](screenshots/lab_1_2.png)
+  ![Signed Commit](screenshots/lab_1_3.png)
 *
 * Answer: "Why is commit signing important in DevOps workflows?"
 
@@ -36,19 +36,19 @@ It moves the project from "this commit claims to be from person X" to "this comm
 
 * Screenshots or verification of the "Verified" badge on GitHub.
 
-  ![Verified Badge](screenshots/img.png)
+  ![Verified Badge](screenshots/lab_1_1.png)
 
 
 ## Task 2: PR Template & Checklist
 
 * Screenshot of PR template auto-filling the description.
   
-  ![PR Template Logic](screenshots/img_4.png)
+  ![PR Template Logic](screenshots/lab_1_5.png)
 
 * Evidence that .github/pull_request_template.md exists on main branch.
   
   The file exists at `.github/pull_request_template.md` in the repository root.
-  ![File in .github folder](screenshots/img_3.png)
+  ![File in .github folder](screenshots/lab_1_4.png)
 
 * Analysis of how PR templates improve collaboration.
   

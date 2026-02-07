@@ -2,6 +2,31 @@
 
 ## Task 1 — Git Object Model Exploration
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## Task 2 — Reset and Reflog Recovery
 
 ## Task 3 — Visualize Commit History
