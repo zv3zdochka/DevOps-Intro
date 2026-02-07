@@ -410,9 +410,30 @@ Use `git restore` for undoing file changes (discard working tree edits, unstage,
 
 ## Task 6 — GitHub Community Engagement
 
+### Actions completed
 
+- Starred the course repository.
+- Starred `simple-container-com/api`.
+- Followed:
+  - Professor: `@Cre-eD`
+  - TAs: `@marat-biriushev`, `@pierrepicaud`
+- Followed at least 3 classmates from the course.
 
-
+![Task 6 — GitHub community](./screenshots/lab_2_9.png)
+![Task 6 — GitHub community](./screenshots/lab_2_10.png)
+![Task 6 — GitHub community](./screenshots/lab_2_11.png)
+![Task 6 — GitHub community](./screenshots/lab_2_12.png)
+![Task 6 — GitHub community](./screenshots/lab_2_13.png)
+![Task 6 — GitHub community](./screenshots/lab_2_14.png)
+![Task 6 — GitHub community](./screenshots/lab_2_15.png)
+![Task 6 — GitHub community](./screenshots/lab_2_16.png)
 
 
 ## Challenges & Solutions
+
+The main difficulty was understanding how Git actually works with commits, branches, and resets. By running the commands step by step and checking `git status`, `git log`, and `git reflog`, it became much clearer how changes affect the working directory, staging area, and commit history.
+
+
+## GitHub Community
+
+Starring repositories matters in open source because it helps with discovery, signals community interest and appreciation to maintainers, and increases a project’s visibility in GitHub search and recommendations. Following developers helps in team projects and professional growth by keeping you aware of others’ work, enabling collaboration, learning from experienced contributors, and building a professional network.
