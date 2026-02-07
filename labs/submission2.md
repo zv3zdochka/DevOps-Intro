@@ -315,7 +315,7 @@ git switch -c cmd-compare
 git branch --show-current
 git switch -
 git branch --show-current
-````
+```
 
 ```text
 Switched to a new branch 'cmd-compare'
