@@ -2,6 +2,7 @@ name: Lab3 CI
 
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   info:
@@ -23,6 +24,29 @@ jobs:
         run: |
           uname -a
           git --version
+
+      - name: Gather system information
+        run: |
+          echo "===== OS / Kernel ====="
+          uname -a
+          cat /etc/os-release || true
+
+          echo "===== CPU ====="
+          nproc
+          lscpu || true
+
+          echo "===== Memory ====="
+          free -h || true
+
+          echo "===== Disk ====="
+          df -h || true
+
+          echo "===== Network ====="
+          ip -br a || true
+
+          echo "===== Tooling ====="
+          git --version
+          python --version || true
 
   second-job:
     name: Dependent job
