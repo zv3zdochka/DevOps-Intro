@@ -83,9 +83,9 @@ git cat-file -p bc3fdac9ed1c923ddb4d97cc1cbc9eb2f76da041
 ```
 
 ### Screenshots
-![Task 1 — cat-file](./screenshots/lab_2_1.png)
-![Task 1 — ls-tree ](./screenshots/lab_2_2.png)
-![Task 1 — (cat-file -p HEAD)](./screenshots/lab_2_3.png)
+![Task 1 — cat-file](screenshots/lab_2/lab_2_1.png)
+![Task 1 — ls-tree ](screenshots/lab_2/lab_2_2.png)
+![Task 1 — (cat-file -p HEAD)](screenshots/lab_2/lab_2_3.png)
 
 ## Task 2 — Reset and Reflog Recovery
 
@@ -205,8 +205,8 @@ By selecting the appropriate reflog entry, the lost commit history can be fully 
 
 
 ### Screenshots
-![Task 2 — commits](./screenshots/lab_2_4.png)
-![Task 1 — git reflog](./screenshots/lab_2_5.png)
+![Task 2 — commits](screenshots/lab_2/lab_2_4.png)
+![Task 1 — git reflog](screenshots/lab_2/lab_2_5.png)
 
 
 ## Task 3 — Visualize Commit History
@@ -269,7 +269,7 @@ The `--graph --all` view makes branch divergence and branch pointers visible at 
 
 ### Screenshot
 
-![Task 3 — git log graph](./screenshots/lab_2_6.png)
+![Task 3 — git log graph](screenshots/lab_2/lab_2_6.png)
 
 
 ## Task 4 — Tagging Commits
@@ -304,7 +304,7 @@ Tags mark specific commits as release points. They are used for semantic version
 
 
 ### Screenshot
-![Task 4 — tags](./screenshots/lab_2_7.png)
+![Task 4 — tags](screenshots/lab_2/lab_2_7.png)
 
 ## Task 5 — git switch vs git checkout vs git restore
 
@@ -406,7 +406,7 @@ Use `git restore` for undoing file changes (discard working tree edits, unstage,
 
 
 ### Screenshot
-![Task 5 — restore status changes](./screenshots/lab_2_8.png)
+![Task 5 — restore status changes](screenshots/lab_2/lab_2_8.png)
 
 ## Task 6 — GitHub Community Engagement
 
@@ -419,14 +419,14 @@ Use `git restore` for undoing file changes (discard working tree edits, unstage,
   - TAs: `@marat-biriushev`, `@pierrepicaud`
 - Followed at least 3 classmates from the course.
 
-![Task 6 — GitHub community](./screenshots/lab_2_9.png)
-![Task 6 — GitHub community](./screenshots/lab_2_10.png)
-![Task 6 — GitHub community](./screenshots/lab_2_11.png)
-![Task 6 — GitHub community](./screenshots/lab_2_12.png)
-![Task 6 — GitHub community](./screenshots/lab_2_13.png)
-![Task 6 — GitHub community](./screenshots/lab_2_14.png)
-![Task 6 — GitHub community](./screenshots/lab_2_15.png)
-![Task 6 — GitHub community](./screenshots/lab_2_16.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_9.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_10.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_11.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_12.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_13.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_14.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_15.png)
+![Task 6 — GitHub community](screenshots/lab_2/lab_2_16.png)
 
 
 ## Challenges & Solutions
