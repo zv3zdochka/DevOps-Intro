@@ -36,3 +36,42 @@ The workflow run started automatically because I pushed a commit to branch `feat
 
 After the `push` event, GitHub Actions matched the workflow by `on: push`, provisioned a GitHub-hosted runner (`ubuntu-latest`) for the `info` job, and executed its steps sequentially (checkout → printing context → OS basics).  
 Once `info` finished successfully, the dependency condition `needs: info` was satisfied, so `second-job` started and executed its step, confirming the job order via logs.
+
+
+## Task 2 — Manual Trigger + System Information
+
+### Changes made to the workflow
+Workflow file: `.github/workflows/lab3.yml`
+
+- Added a manual trigger via `workflow_dispatch`, so the workflow can be started from the GitHub UI (Actions → Lab3 CI → Run workflow).
+- Added an additional step `Gather system information` inside the `info` job to collect detailed runner environment information (OS, CPU, memory, disk, network, tooling).
+
+### Evidence (screenshots)
+
+![Workflow manual run UI / runs list](screenshots/lab_3/lab_3_4.png)
+![Manual dispatch form (branch selection)](screenshots/lab_3/lab_3_5.png)
+![Run details: workflow_dispatch event](screenshots/lab_3/lab_3_6.png)
+![Job Basic info: step list](screenshots/lab_3/lab_3_7.png)
+![Logs: Gather system information (part 1)](screenshots/lab_3/lab_3_8.png)
+![Logs: Gather system information (part 2)](screenshots/lab_3/lab_3_9.png)
+![Logs: Gather system information (part 3)](screenshots/lab_3/lab_3_10.png)
+
+### Manual run link
+https://github.com/zv3zdochka/DevOps-Intro/actions/runs/22074184273
+
+### Gathered system information (runner)
+The `Gather system information` step prints:
+- **OS / Kernel**: `uname -a`, `/etc/os-release`
+- **CPU**: `nproc`, `lscpu`
+- **Memory**: `free -h`
+- **Disk**: `df -h`
+- **Network**: `ip -br a`
+- **Tooling**: `git --version`, `python --version`
+
+
+### Manual vs automatic triggers (comparison)
+- **Automatic trigger (`push`)**: the workflow starts automatically on every push event that matches the workflow rules. It is useful for continuous integration: every change is verified immediately after being pushed.
+- **Manual trigger (`workflow_dispatch`)**: the workflow starts only when the user explicitly launches it from the GitHub Actions UI. This is useful for ad-hoc runs: debugging, checking runner environment, re-running without new commits, and collecting diagnostics.
+
+### Runner environment analysis
+The workflow runs on a GitHub-hosted runner (`ubuntu-latest`). The runner environment is ephemeral: each run starts from a clean VM-like environment that already contains common Linux utilities and developer tooling. The collected system information confirms the available CPU cores, memory, disk space, and baseline OS/tooling versions, which is sufficient for typical CI tasks (build/test/lint). If the workflow needs additional dependencies, they must be installed explicitly within the job steps.
