@@ -299,3 +299,215 @@ At this point, the environment was ready for:
 * WASM build and execution with `ctr`,
 * optional local or cloud Spin testing for the bonus task.
 
+
+
+## Task 1 — Create the Moscow Time Application
+
+I worked directly in `labs/lab12/` as required.
+
+### 1.1 Navigate to the lab directory
+
+```bash
+cd /root/labs/lab12
+pwd
+ls -la
+````
+
+Output:
+
+```text
+/root/labs/lab12
+total 24
+drwxr-xr-x 2 root root 4096 Apr  8 08:59 .
+drwxr-xr-x 4 root root 4096 Apr  8 08:58 ..
+-rw-r--r-- 1 root root  432 Apr  8 08:59 Dockerfile
+-rw-r--r-- 1 root root   79 Apr  8 08:59 Dockerfile.wasm
+-rw-r--r-- 1 root root 3456 Apr  8 08:59 main.go
+-rw-r--r-- 1 root root  305 Apr  8 08:59 spin.toml
+```
+
+This confirmed that I was working in the correct lab directory and that all reference files were already present.
+
+### 1.2 Review the provided Go application
+
+I reviewed `main.go` and verified that the same file supports three execution modes:
+
+* CLI mode with `MODE=once`
+* traditional HTTP server mode with `net/http`
+* WAGI mode for Spin using CGI-style environment variables
+
+The code uses `time.FixedZone("MSK", 3*60*60)` to avoid relying on external timezone databases, which is useful for minimal WASM environments.
+
+The WAGI detection is implemented through:
+
+```go
+func isWagi() bool {
+    return os.Getenv("REQUEST_METHOD") != ""
+}
+```
+
+If `REQUEST_METHOD` is present, the program handles one request through `runWagiOnce()` and writes the response to standard output. Otherwise, it falls back to the normal `net/http` server. For benchmarking, the program also has a one-shot CLI mode:
+
+```go
+if os.Getenv("MODE") == "once" {
+    b, _ := json.MarshalIndent(getMoscowTime(), "", "  ")
+    fmt.Println(string(b))
+    return
+}
+```
+
+So the same `main.go` works in three contexts without changing the source file:
+
+* native server mode in Docker,
+* one-shot CLI mode for Docker and WASM benchmarking,
+* Spin WAGI mode for WASM HTTP handling.
+
+### 1.3 Test CLI mode
+
+Command:
+
+```bash
+MODE=once go run main.go
+```
+
+Output:
+
+```text
+{
+  "moscow_time": "2026-04-08 21:45:25 MSK",
+  "timestamp": 1775673925
+}
+```
+
+This shows that CLI mode works correctly and prints a single JSON response before exiting.
+
+### 1.4 Test server mode
+
+To test the normal HTTP server mode, I started the application in the background and queried both the HTML page and the JSON API with `curl`.
+
+Commands:
+
+```bash
+nohup go run main.go > /tmp/lab12_server.log 2>&1 &
+SERVER_PID=$!
+sleep 3
+
+curl -i http://127.0.0.1:8080/ | sed -n '1,40p'
+curl -i http://127.0.0.1:8080/api/time | sed -n '1,40p'
+sed -n '1,40p' /tmp/lab12_server.log
+
+kill $SERVER_PID
+wait $SERVER_PID 2>/dev/null || true
+```
+
+Output for `/`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Date: Wed, 08 Apr 2026 18:45:29 GMT
+Content-Length: 1221
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Moscow Time</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px;
+           background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; }
+    .container { background: rgba(255,255,255,.1); padding: 40px; border-radius: 10px;
+                 backdrop-filter: blur(10px); max-width: 600px; margin: 0 auto; }
+    h1 { margin-bottom: 30px; }
+    #time { font-size: 3em; font-weight: bold; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,.3); }
+    a { color:#ffd700; text-decoration:none; font-size:1.2em; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🕰️ Current Time in Moscow</h1>
+    <div id="time">Loading...</div>
+    <p><a href="/api/time">📊 View JSON API</a></p>
+  </div>
+  <script>
+    async function updateTime(){
+      try{
+        const r=await fetch('/api/time'); const d=await r.json();
+        document.getElementById('time').textContent=d.moscow_time;
+      }catch(e){ console.error(e); document.getElementById('time').textContent='Error loading time'; }
+    }
+    updateTime(); setInterval(updateTime,1000);
+  </script>
+</body>
+</html>
+```
+
+Output for `/api/time`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 08 Apr 2026 18:45:29 GMT
+Content-Length: 65
+
+{"moscow_time":"2026-04-08 21:45:29 MSK","timestamp":1775673929}
+```
+
+Server log:
+
+```text
+nohup: ignoring input
+2026/04/08 18:45:26 Server starting on :8080
+```
+
+This confirmed that server mode works correctly:
+
+* `/` returns the HTML page
+* `/api/time` returns the JSON response
+
+### 1.5 Browser test
+
+I also tested the page through an SSH port forward and opened it in the browser. The page rendered correctly and showed the current Moscow time.
+
+Command used for port forwarding on the local machine:
+
+```powershell
+ssh -L 8080:127.0.0.1:8080 -i C:\Users\batsi\.ssh\serv1 root@95.182.115.130
+```
+
+Then on the server:
+
+```bash
+cd /root/labs/lab12
+go run main.go
+```
+
+When I tried to start it again, I got:
+
+```text
+2026/04/08 18:45:56 Server starting on :8080
+2026/04/08 18:45:56 listen tcp :8080: bind: address already in use
+exit status 1
+```
+
+This happened because the application was already running on port `8080` from the earlier test. So the second start failed for the expected reason: the port was already occupied.
+
+The browser screenshot:
+
+
+![screenshot](screenshots/lab_12/img.png)
+
+
+### Result
+
+Task 1 is completed.
+
+I confirmed that:
+
+* the work was done directly in `labs/lab12/`
+* `main.go` supports CLI mode, traditional server mode, and WAGI mode
+* CLI mode works with `MODE=once`
+* server mode works and serves both HTML and JSON
+* the page was also opened successfully in the browser
+
+
