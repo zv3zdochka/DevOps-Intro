@@ -511,3 +511,471 @@ I confirmed that:
 * the page was also opened successfully in the browser
 
 
+Вот готовый блок для `submission12.md`. Картинки уже вставлены так, чтобы они отображались прямо в Markdown: `screenshots/lab_12/img.png` и `screenshots/lab_12/img_1.png`. GitHub рендерит Markdown в веб-интерфейсе и поддерживает PNG-изображения. ([GitHub Docs][1])
+
+````markdown id="m7mcrj"
+## Task 1 — Create the Moscow Time Application
+
+I worked directly in `labs/lab12/` as required.
+
+### 1.1 Navigate to the lab directory
+
+```bash
+cd /root/labs/lab12
+pwd
+ls -la
+````
+
+Output:
+
+```text
+/root/labs/lab12
+total 24
+drwxr-xr-x 2 root root 4096 Apr  8 08:59 .
+drwxr-xr-x 4 root root 4096 Apr  8 08:58 ..
+-rw-r--r-- 1 root root  432 Apr  8 08:59 Dockerfile
+-rw-r--r-- 1 root root   79 Apr  8 08:59 Dockerfile.wasm
+-rw-r--r-- 1 root root 3456 Apr  8 08:59 main.go
+-rw-r--r-- 1 root root  305 Apr  8 08:59 spin.toml
+```
+
+This confirmed that I was working in the correct directory and that all required files were already present.
+
+### 1.2 Review the provided Go application
+
+I reviewed `main.go` and verified that the same source file supports three execution contexts:
+
+* CLI mode with `MODE=once`
+* traditional HTTP server mode with `net/http`
+* WAGI mode for Spin through CGI-style environment variables
+
+The program uses `time.FixedZone("MSK", 3*60*60)` to avoid depending on an external timezone database, which is convenient for minimal WASM environments.
+
+The code checks for WAGI mode with:
+
+```go
+func isWagi() bool {
+        return os.Getenv("REQUEST_METHOD") != ""
+}
+```
+
+If `REQUEST_METHOD` is set, the program handles a single request through `runWagiOnce()` and writes headers and body to standard output. Otherwise, it falls back to the normal `net/http` server. It also supports a one-shot CLI mode for benchmarking:
+
+```go
+if os.Getenv("MODE") == "once" {
+        b, _ := json.MarshalIndent(getMoscowTime(), "", "  ")
+        fmt.Println(string(b))
+        return
+}
+```
+
+So the same `main.go` works in all three cases without changing the file:
+
+* native server mode in Docker,
+* one-shot CLI mode for Docker and WASM benchmarking,
+* Spin WAGI mode for HTTP handling in WASM.
+
+### 1.3 Test CLI mode
+
+Command:
+
+```bash
+MODE=once go run main.go
+```
+
+Output:
+
+```text
+{
+  "moscow_time": "2026-04-08 21:45:25 MSK",
+  "timestamp": 1775673925
+}
+```
+
+This showed that CLI mode works correctly and prints a single JSON response before exiting.
+
+### 1.4 Test server mode
+
+I then started the application in server mode and checked both the HTML page and the JSON API.
+
+Commands:
+
+```bash
+nohup go run main.go > /tmp/lab12_server.log 2>&1 &
+SERVER_PID=$!
+sleep 3
+
+curl -i http://127.0.0.1:8080/ | sed -n '1,40p'
+curl -i http://127.0.0.1:8080/api/time | sed -n '1,40p'
+sed -n '1,40p' /tmp/lab12_server.log
+
+kill $SERVER_PID
+wait $SERVER_PID 2>/dev/null || true
+```
+
+Output for `/`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Date: Wed, 08 Apr 2026 18:45:29 GMT
+Content-Length: 1221
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Moscow Time</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px;
+           background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; }
+    .container { background: rgba(255,255,255,.1); padding: 40px; border-radius: 10px;
+                 backdrop-filter: blur(10px); max-width: 600px; margin: 0 auto; }
+    h1 { margin-bottom: 30px; }
+    #time { font-size: 3em; font-weight: bold; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,.3); }
+    a { color:#ffd700; text-decoration:none; font-size:1.2em; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🕰️ Current Time in Moscow</h1>
+    <div id="time">Loading...</div>
+    <p><a href="/api/time">📊 View JSON API</a></p>
+  </div>
+  <script>
+    async function updateTime(){
+      try{
+        const r=await fetch('/api/time'); const d=await r.json();
+        document.getElementById('time').textContent=d.moscow_time;
+      }catch(e){ console.error(e); document.getElementById('time').textContent='Error loading time'; }
+    }
+    updateTime(); setInterval(updateTime,1000);
+  </script>
+</body>
+</html>
+```
+
+Output for `/api/time`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 08 Apr 2026 18:45:29 GMT
+Content-Length: 65
+
+{"moscow_time":"2026-04-08 21:45:29 MSK","timestamp":1775673929}
+```
+
+Server log:
+
+```text
+nohup: ignoring input
+2026/04/08 18:45:26 Server starting on :8080
+```
+
+This confirmed that server mode works correctly and serves both the HTML page and the JSON endpoint.
+
+### 1.5 Browser test
+
+I also opened the application in a browser through an SSH port forward.
+
+Commands:
+
+```powershell
+ssh -L 8080:127.0.0.1:8080 -i C:\Users\batsi\.ssh\serv1 root@95.182.115.130
+```
+
+```bash
+cd /root/labs/lab12
+go run main.go
+```
+
+When I tried to start it again, the port was already occupied:
+
+```text
+2026/04/08 18:45:56 Server starting on :8080
+2026/04/08 18:45:56 listen tcp :8080: bind: address already in use
+exit status 1
+```
+
+This happened because the application had already been started on the same port during the earlier test.
+
+Browser screenshot:
+
+![Task 1 browser screenshot](screenshots/lab_12/img.png)
+
+### Result
+
+Task 1 is completed.
+
+I confirmed that:
+
+* the work was done directly in `labs/lab12/`
+* the same `main.go` supports CLI mode, traditional server mode, and WAGI mode
+* CLI mode works with `MODE=once`
+* server mode serves both HTML and JSON correctly
+* the page was also opened successfully in the browser
+
+## Task 2 — Build Traditional Docker Container
+
+### 2.1 Review the provided Dockerfile
+
+I reviewed the provided `Dockerfile`.
+
+```bash
+sed -n '1,220p' Dockerfile
+```
+
+Output:
+
+```text
+# Build stage
+FROM golang:1.21-alpine AS builder
+
+WORKDIR /app
+COPY main.go .
+
+# Build static binary (no CGO, for scratch base)
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -tags netgo -trimpath \
+    -ldflags="-s -w -extldflags=-static" \
+    -o moscow-time main.go
+
+# Run stage - minimal scratch image
+FROM scratch
+
+WORKDIR /app
+COPY --from=builder /app/moscow-time .
+
+EXPOSE 8080
+ENTRYPOINT ["/app/moscow-time"]
+```
+
+The Dockerfile uses a two-stage build. The first stage compiles the Go application, and the second stage uses `scratch` as the runtime image. The binary is built as a static executable using `CGO_ENABLED=0`, `-tags netgo`, `-trimpath`, and stripped linker flags, which keeps the final image minimal.
+
+### 2.2 Clean up and build the traditional image
+
+Before building, I cleaned old test containers and dangling images.
+
+```bash
+docker rm -f test-traditional test-wasm temp-traditional 2>/dev/null || true
+docker image prune -f 2>/dev/null || true
+```
+
+Output:
+
+```text
+Total reclaimed space: 0B
+```
+
+Then I built the image:
+
+```bash
+docker build -t moscow-time-traditional -f Dockerfile .
+```
+
+Output:
+
+```text
+[+] Building 47.5s (12/12) FINISHED                        docker:default
+ => [internal] load build definition from Dockerfile                 0.0s
+ => => transferring dockerfile: 471B                                 0.0s
+ => [internal] load metadata for docker.io/library/golang:1.21-alpine  1.5s
+ => [auth] library/golang:pull token for registry-1.docker.io        0.0s
+ => [internal] load .dockerignore                                    0.0s
+ => => transferring context: 2B                                      0.0s
+ => [builder 1/4] FROM docker.io/library/golang:1.21-alpine@sha256... 13.1s
+ => [internal] load build context                                    0.0s
+ => => transferring context: 3.49kB                                  0.0s
+ => [stage-1 1/2] WORKDIR /app                                       0.0s
+ => [builder 2/4] WORKDIR /app                                       0.5s
+ => [builder 3/4] COPY main.go .                                     0.1s
+ => [builder 4/4] RUN CGO_ENABLED=0 GOOS=linux     go build -tags... 32.0s
+ => [stage-1 2/2] COPY --from=builder /app/moscow-time .             0.1s
+ => exporting to image                                               0.1s
+ => => exporting layers                                              0.1s
+ => => writing image sha256:b032d297d0eaa968306165cfa1705d9ba97ebf6...
+ => => naming to docker.io/library/moscow-time-traditional           0.0s
+```
+
+The image was built successfully.
+
+### 2.3 Test CLI mode
+
+I tested the traditional container in one-shot CLI mode.
+
+```bash
+docker run --rm -e MODE=once moscow-time-traditional
+```
+
+Output:
+
+```text
+{
+  "moscow_time": "2026-04-08 22:07:34 MSK",
+  "timestamp": 1775675254
+}
+```
+
+This confirmed that the container works correctly in CLI mode.
+
+### 2.4 Extract the binary and check its size
+
+I extracted the compiled binary from the image and inspected it.
+
+```bash
+rm -f ./moscow-time-traditional
+docker create --name temp-traditional moscow-time-traditional
+docker cp temp-traditional:/app/moscow-time ./moscow-time-traditional
+docker rm temp-traditional
+ls -lh ./moscow-time-traditional
+file ./moscow-time-traditional
+```
+
+Output:
+
+```text
+25762126e28d830993626be9b5650c37f88cd0f971561038763b7d62dadebb92
+Successfully copied 4.7MB to /root/labs/lab12/moscow-time-traditional
+temp-traditional
+-rwxr-xr-x 1 root root 4.5M Apr  8 19:07 ./moscow-time-traditional
+./moscow-time-traditional: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, Go BuildID=9yOTgsxnfzxr9ebtgoVB/diVLw-eVB_V2gSbIyHTU/ILU9qTDEwX5qS6oMqdUw/eZ2Q8AdFMg0caoH9xPnp, stripped
+```
+
+So the traditional Linux binary size is **4.5 MB**.
+
+### 2.5 Check image size
+
+I measured the final image size using both `docker images` and `docker image inspect`.
+
+```bash
+docker images moscow-time-traditional
+docker image inspect moscow-time-traditional --format '{{.Size}}' | awk '{print $1/1024/1024 " MB"}'
+```
+
+Output:
+
+```text
+REPOSITORY                TAG       IMAGE ID       CREATED         SIZE
+moscow-time-traditional   latest    b032d297d0ea   2 seconds ago   4.7MB
+4.48047 MB
+```
+
+So the final image size is about **4.7 MB**, and the more precise reported size is **4.48047 MB**.
+
+### 2.6 Startup time benchmark
+
+I benchmarked startup time in CLI mode across five runs.
+
+```bash
+for i in 1 2 3 4 5; do
+  /usr/bin/time -f "%e" sh -c 'docker run --rm -e MODE=once moscow-time-traditional >/dev/null' 2>&1
+done | awk '{sum+=$1; count++} END {print "Average:", sum/count, "seconds"}'
+```
+
+Output:
+
+```text
+Average: 0.56 seconds
+```
+
+So the average startup time for the traditional container in CLI mode was **0.56 seconds**.
+
+### 2.7 Server mode check
+
+Before testing server mode, I cleared any old local Go process and old test container:
+
+```bash
+pkill -f "go run main.go" 2>/dev/null || true
+docker rm -f test-traditional 2>/dev/null || true
+sleep 2
+```
+
+Then I attempted to start the traditional container in detached server mode:
+
+```bash
+docker run -d --rm --name test-traditional -p 8080:8080 moscow-time-traditional
+sleep 3
+```
+
+Output:
+
+```text
+8e2e9a323dea3fc39f72acd6cefd9eaf439c79e40919c6800df48ce85f93aa68
+docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint test-traditional (6fc27d6ef4a8dff5c9736d74a002ee89f6e43e0f8decab9d9c3fa7950052cb24): failed to bind host port for 0.0.0.0:8080:172.17.0.8:8080/tcp: address already in use
+
+Run 'docker run --help' for more information
+```
+
+During this check, port `8080` was already occupied on the host, so the container could not successfully bind to it.
+
+I still checked the endpoints on `127.0.0.1:8080`:
+
+```bash
+curl -i http://127.0.0.1:8080/ | sed -n '1,20p'
+curl -i http://127.0.0.1:8080/api/time | sed -n '1,20p'
+```
+
+Output for `/`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Date: Wed, 08 Apr 2026 19:16:00 GMT
+Content-Length: 1221
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Moscow Time</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px;
+           background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; }
+    .container { background: rgba(255,255,255,.1); padding: 40px; border-radius: 10px;
+                 backdrop-filter: blur(10px); max-width: 600px; margin: 0 auto; }
+    h1 { margin-bottom: 30px; }
+    #time { font-size: 3em; font-weight: bold; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,.3); }
+    a { color:#ffd700; text-decoration:none; font-size:1.2em; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+```
+
+Output for `/api/time`:
+
+```text
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 08 Apr 2026 19:16:00 GMT
+Content-Length: 65
+
+{"moscow_time":"2026-04-08 22:16:00 MSK","timestamp":1775675760}
+```
+
+I also tried to collect memory usage and logs:
+
+```bash
+docker stats test-traditional --no-stream
+docker logs test-traditional 2>&1 | sed -n '1,20p'
+```
+
+Output:
+
+```text
+Error response from daemon: No such container: test-traditional
+Error response from daemon: No such container: test-traditional
+```
+
+Because the container failed to bind the host port, it did not remain running, so memory usage for `test-traditional` was not available in this run.
+
+### 2.8 Browser screenshot
+
+Browser screenshot from the server-mode check:
+
+![Task 2 browser screenshot](screenshots/lab_12/img_1.png)
+
+### Result
+
+Task 2 is completed.
+
+The traditional Docker image was built successfully. The CLI mode worked correctly, the extracted static binary size was **4.5 MB**, the image size was about **4.7 MB**, and the average startup time across five runs was **0.56 seconds**. During the server-mode check, port `8080` was already in use on the host, so the container could not stay up long enough for `docker stats`, but the expected HTML page and JSON endpoint were reachable on that port during the test.
