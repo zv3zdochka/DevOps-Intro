@@ -510,212 +510,6 @@ I confirmed that:
 * server mode works and serves both HTML and JSON
 * the page was also opened successfully in the browser
 
-
-Вот готовый блок для `submission12.md`. Картинки уже вставлены так, чтобы они отображались прямо в Markdown: `screenshots/lab_12/img.png` и `screenshots/lab_12/img_1.png`. GitHub рендерит Markdown в веб-интерфейсе и поддерживает PNG-изображения. ([GitHub Docs][1])
-
-````markdown id="m7mcrj"
-## Task 1 — Create the Moscow Time Application
-
-I worked directly in `labs/lab12/` as required.
-
-### 1.1 Navigate to the lab directory
-
-```bash
-cd /root/labs/lab12
-pwd
-ls -la
-````
-
-Output:
-
-```text
-/root/labs/lab12
-total 24
-drwxr-xr-x 2 root root 4096 Apr  8 08:59 .
-drwxr-xr-x 4 root root 4096 Apr  8 08:58 ..
--rw-r--r-- 1 root root  432 Apr  8 08:59 Dockerfile
--rw-r--r-- 1 root root   79 Apr  8 08:59 Dockerfile.wasm
--rw-r--r-- 1 root root 3456 Apr  8 08:59 main.go
--rw-r--r-- 1 root root  305 Apr  8 08:59 spin.toml
-```
-
-This confirmed that I was working in the correct directory and that all required files were already present.
-
-### 1.2 Review the provided Go application
-
-I reviewed `main.go` and verified that the same source file supports three execution contexts:
-
-* CLI mode with `MODE=once`
-* traditional HTTP server mode with `net/http`
-* WAGI mode for Spin through CGI-style environment variables
-
-The program uses `time.FixedZone("MSK", 3*60*60)` to avoid depending on an external timezone database, which is convenient for minimal WASM environments.
-
-The code checks for WAGI mode with:
-
-```go
-func isWagi() bool {
-        return os.Getenv("REQUEST_METHOD") != ""
-}
-```
-
-If `REQUEST_METHOD` is set, the program handles a single request through `runWagiOnce()` and writes headers and body to standard output. Otherwise, it falls back to the normal `net/http` server. It also supports a one-shot CLI mode for benchmarking:
-
-```go
-if os.Getenv("MODE") == "once" {
-        b, _ := json.MarshalIndent(getMoscowTime(), "", "  ")
-        fmt.Println(string(b))
-        return
-}
-```
-
-So the same `main.go` works in all three cases without changing the file:
-
-* native server mode in Docker,
-* one-shot CLI mode for Docker and WASM benchmarking,
-* Spin WAGI mode for HTTP handling in WASM.
-
-### 1.3 Test CLI mode
-
-Command:
-
-```bash
-MODE=once go run main.go
-```
-
-Output:
-
-```text
-{
-  "moscow_time": "2026-04-08 21:45:25 MSK",
-  "timestamp": 1775673925
-}
-```
-
-This showed that CLI mode works correctly and prints a single JSON response before exiting.
-
-### 1.4 Test server mode
-
-I then started the application in server mode and checked both the HTML page and the JSON API.
-
-Commands:
-
-```bash
-nohup go run main.go > /tmp/lab12_server.log 2>&1 &
-SERVER_PID=$!
-sleep 3
-
-curl -i http://127.0.0.1:8080/ | sed -n '1,40p'
-curl -i http://127.0.0.1:8080/api/time | sed -n '1,40p'
-sed -n '1,40p' /tmp/lab12_server.log
-
-kill $SERVER_PID
-wait $SERVER_PID 2>/dev/null || true
-```
-
-Output for `/`:
-
-```text
-HTTP/1.1 200 OK
-Content-Type: text/html; charset=utf-8
-Date: Wed, 08 Apr 2026 18:45:29 GMT
-Content-Length: 1221
-
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Moscow Time</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px;
-           background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); color: white; }
-    .container { background: rgba(255,255,255,.1); padding: 40px; border-radius: 10px;
-                 backdrop-filter: blur(10px); max-width: 600px; margin: 0 auto; }
-    h1 { margin-bottom: 30px; }
-    #time { font-size: 3em; font-weight: bold; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,.3); }
-    a { color:#ffd700; text-decoration:none; font-size:1.2em; }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>🕰️ Current Time in Moscow</h1>
-    <div id="time">Loading...</div>
-    <p><a href="/api/time">📊 View JSON API</a></p>
-  </div>
-  <script>
-    async function updateTime(){
-      try{
-        const r=await fetch('/api/time'); const d=await r.json();
-        document.getElementById('time').textContent=d.moscow_time;
-      }catch(e){ console.error(e); document.getElementById('time').textContent='Error loading time'; }
-    }
-    updateTime(); setInterval(updateTime,1000);
-  </script>
-</body>
-</html>
-```
-
-Output for `/api/time`:
-
-```text
-HTTP/1.1 200 OK
-Content-Type: application/json
-Date: Wed, 08 Apr 2026 18:45:29 GMT
-Content-Length: 65
-
-{"moscow_time":"2026-04-08 21:45:29 MSK","timestamp":1775673929}
-```
-
-Server log:
-
-```text
-nohup: ignoring input
-2026/04/08 18:45:26 Server starting on :8080
-```
-
-This confirmed that server mode works correctly and serves both the HTML page and the JSON endpoint.
-
-### 1.5 Browser test
-
-I also opened the application in a browser through an SSH port forward.
-
-Commands:
-
-```powershell
-ssh -L 8080:127.0.0.1:8080 -i C:\Users\batsi\.ssh\serv1 root@95.182.115.130
-```
-
-```bash
-cd /root/labs/lab12
-go run main.go
-```
-
-When I tried to start it again, the port was already occupied:
-
-```text
-2026/04/08 18:45:56 Server starting on :8080
-2026/04/08 18:45:56 listen tcp :8080: bind: address already in use
-exit status 1
-```
-
-This happened because the application had already been started on the same port during the earlier test.
-
-Browser screenshot:
-
-![Task 1 browser screenshot](screenshots/lab_12/img.png)
-
-### Result
-
-Task 1 is completed.
-
-I confirmed that:
-
-* the work was done directly in `labs/lab12/`
-* the same `main.go` supports CLI mode, traditional server mode, and WAGI mode
-* CLI mode works with `MODE=once`
-* server mode serves both HTML and JSON correctly
-* the page was also opened successfully in the browser
-
 ## Task 2 — Build Traditional Docker Container
 
 ### 2.1 Review the provided Dockerfile
@@ -881,39 +675,45 @@ Average: 0.56 seconds
 
 So the average startup time for the traditional container in CLI mode was **0.56 seconds**.
 
+
+
 ### 2.7 Server mode check
 
-Before testing server mode, I cleared any old local Go process and old test container:
+For the final server-mode check, I ran the container on a free host port to avoid conflicts with other services already using `8080`.
 
 ```bash
 pkill -f "go run main.go" 2>/dev/null || true
 docker rm -f test-traditional 2>/dev/null || true
 sleep 2
-```
 
-Then I attempted to start the traditional container in detached server mode:
-
-```bash
-docker run -d --rm --name test-traditional -p 8080:8080 moscow-time-traditional
+docker run -d --rm --name test-traditional -p 18080:8080 moscow-time-traditional
 sleep 3
-```
+````
 
 Output:
 
 ```text
-8e2e9a323dea3fc39f72acd6cefd9eaf439c79e40919c6800df48ce85f93aa68
-docker: Error response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint test-traditional (6fc27d6ef4a8dff5c9736d74a002ee89f6e43e0f8decab9d9c3fa7950052cb24): failed to bind host port for 0.0.0.0:8080:172.17.0.8:8080/tcp: address already in use
-
-Run 'docker run --help' for more information
+17a7d6a0aafd06ad913c72023fb391b3c4ce6cfb33622242fabe1f464d856340
 ```
 
-During this check, port `8080` was already occupied on the host, so the container could not successfully bind to it.
-
-I still checked the endpoints on `127.0.0.1:8080`:
+Then I verified that the container was running and checked both HTTP endpoints.
 
 ```bash
-curl -i http://127.0.0.1:8080/ | sed -n '1,20p'
-curl -i http://127.0.0.1:8080/api/time | sed -n '1,20p'
+docker ps --filter name=test-traditional
+docker images moscow-time-traditional
+curl -i http://127.0.0.1:18080/ | sed -n '1,25p'
+curl -i http://127.0.0.1:18080/api/time | sed -n '1,25p'
+docker stats test-traditional --no-stream
+docker logs test-traditional 2>&1 | sed -n '1,25p'
+```
+
+Container state:
+
+```text
+CONTAINER ID   IMAGE                     COMMAND              CREATED         STATUS         PORTS                                           NAMES
+17a7d6a0aafd   moscow-time-traditional   "/app/moscow-time"   3 seconds ago   Up 3 seconds   0.0.0.0:18080->8080/tcp, [::]:18080->8080/tcp   test-traditional
+REPOSITORY                TAG       IMAGE ID       CREATED         SIZE
+moscow-time-traditional   latest    e6cf42cf05ba   6 seconds ago   4.7MB
 ```
 
 Output for `/`:
@@ -921,7 +721,7 @@ Output for `/`:
 ```text
 HTTP/1.1 200 OK
 Content-Type: text/html; charset=utf-8
-Date: Wed, 08 Apr 2026 19:16:00 GMT
+Date: Thu, 09 Apr 2026 10:23:50 GMT
 Content-Length: 1221
 
 <!DOCTYPE html>
@@ -939,6 +739,11 @@ Content-Length: 1221
     a:hover { text-decoration: underline; }
   </style>
 </head>
+<body>
+  <div class="container">
+    <h1>🕰️ Current Time in Moscow</h1>
+    <div id="time">Loading...</div>
+    <p><a href="/api/time">📊 View JSON API</a></p>
 ```
 
 Output for `/api/time`:
@@ -946,31 +751,30 @@ Output for `/api/time`:
 ```text
 HTTP/1.1 200 OK
 Content-Type: application/json
-Date: Wed, 08 Apr 2026 19:16:00 GMT
+Date: Thu, 09 Apr 2026 10:23:50 GMT
 Content-Length: 65
 
-{"moscow_time":"2026-04-08 22:16:00 MSK","timestamp":1775675760}
+{"moscow_time":"2026-04-09 13:23:50 MSK","timestamp":1775730230}
 ```
 
-I also tried to collect memory usage and logs:
-
-```bash
-docker stats test-traditional --no-stream
-docker logs test-traditional 2>&1 | sed -n '1,20p'
-```
-
-Output:
+Memory usage from `docker stats`:
 
 ```text
-Error response from daemon: No such container: test-traditional
-Error response from daemon: No such container: test-traditional
+CONTAINER ID   NAME               CPU %     MEM USAGE / LIMIT    MEM %     NET I/O           BLOCK I/O   PIDS
+17a7d6a0aafd   test-traditional   0.00%     1.09MiB / 3.824GiB   0.03%     1.76kB / 2.22kB   0B / 0B     4
 ```
 
-Because the container failed to bind the host port, it did not remain running, so memory usage for `test-traditional` was not available in this run.
+Container log:
+
+```text
+2026/04/09 10:23:47 Server starting on :8080
+```
+
+This confirmed that the traditional container worked correctly in server mode on port `18080`, and the memory usage was captured successfully from `docker stats`.
 
 ### 2.8 Browser screenshot
 
-Browser screenshot from the server-mode check:
+I also opened the containerized application in the browser through an SSH tunnel using the final server-mode run on port `18080`.
 
 ![Task 2 browser screenshot](screenshots/lab_12/img_1.png)
 
@@ -978,4 +782,347 @@ Browser screenshot from the server-mode check:
 
 Task 2 is completed.
 
-The traditional Docker image was built successfully. The CLI mode worked correctly, the extracted static binary size was **4.5 MB**, the image size was about **4.7 MB**, and the average startup time across five runs was **0.56 seconds**. During the server-mode check, port `8080` was already in use on the host, so the container could not stay up long enough for `docker stats`, but the expected HTML page and JSON endpoint were reachable on that port during the test.
+The traditional Docker image was built successfully. The CLI mode worked correctly, the extracted static binary size was **4.5 MB**, the image size was about **4.7 MB**, and the average startup time across five runs was **0.56 seconds**. In the final server-mode run, the container served both the HTML page and the JSON API correctly on port `18080`, and memory usage was captured successfully from `docker stats`.
+
+
+
+
+
+## Task 3 — Build WASM Container (ctr-based)
+
+### 3.1 Capture TinyGo version
+
+I first recorded the TinyGo build environment.
+
+```bash
+cd /root/labs/lab12
+docker run --rm tinygo/tinygo:0.39.0 tinygo version
+````
+
+Output:
+
+```text id="bq4fjw"
+tinygo version 0.39.0 linux/amd64 (using go version go1.25.0 and LLVM version 19.1.2)
+```
+
+### 3.2 Build the WASM binary from the same `main.go`
+
+I used the same `main.go` file as in the traditional Docker build and compiled it to WASI WebAssembly using TinyGo.
+
+```bash
+mkdir -p /dev/shm/lab12-tmp
+
+docker run --rm \
+  --user 0:0 \
+  -e TMPDIR=/tmp \
+  -v /dev/shm/lab12-tmp:/tmp \
+  -v "$(pwd):/src" \
+  -w /src \
+  tinygo/tinygo:0.39.0 \
+  tinygo build -o main.wasm -target=wasi main.go
+```
+
+Then I verified the produced WASM binary.
+
+```bash
+ls -lh main.wasm
+file main.wasm
+```
+
+Output:
+
+```text id="r2io5m"
+-rwxr-xr-x 1 root root 2.4M Apr  9 07:42 main.wasm
+main.wasm: WebAssembly (wasm) binary module version 0x1 (MVP)
+```
+
+This confirmed that the same application source was successfully compiled into a WASM module.
+
+### 3.3 Review the WASM Dockerfile
+
+I reviewed the provided `Dockerfile.wasm`.
+
+```bash
+sed -n '1,120p' Dockerfile.wasm
+```
+
+Output:
+
+```text id="s6e5m1"
+FROM scratch
+COPY main.wasm /main.wasm
+EXPOSE 8080
+ENTRYPOINT ["/main.wasm"]
+```
+
+The image is minimal: it starts from `scratch`, copies only the `main.wasm` file, and uses the WASM module itself as the entry point.
+
+### 3.4 Build OCI archive and import it into containerd
+
+I used Docker Buildx with the `docker-container` builder to create an OCI archive for the WASM image.
+
+```bash
+docker buildx use lab12builder
+docker buildx inspect --bootstrap
+
+docker buildx build \
+  --builder lab12builder \
+  --platform=wasi/wasm \
+  --provenance=false \
+  -f Dockerfile.wasm \
+  --output type=oci,dest=moscow-time-wasm.oci \
+  .
+```
+
+Output:
+
+```text id="gzqxh1"
+[+] Building 0.6s (5/5) FINISHED             docker-container:lab12builder
+ => [internal] load build definition from Dockerfile.wasm             0.0s
+ => => transferring dockerfile: 121B                                  0.0s
+ => [internal] load .dockerignore                                     0.0s
+ => => transferring context: 2B                                       0.0s
+ => [internal] load build context                                     0.1s
+ => => transferring context: 2.45MB                                   0.1s
+ => [1/1] COPY main.wasm /main.wasm                                   0.0s
+ => exporting to oci image format                                     0.3s
+ => => exporting layers                                               0.3s
+ => => exporting manifest sha256:730127b998404bc6bde5a1ee81f83c8791e...
+ => => exporting config sha256:297db9d6da53d66f5959b5aae1867b0c887d2...
+ => => sending tarball                                                0.1s
+```
+
+Then I checked the generated OCI archive:
+
+```bash
+ls -lh moscow-time-wasm.oci
+file moscow-time-wasm.oci
+```
+
+Output:
+
+```text id="f7svtc"
+-rw-r--r-- 1 root root 826K Apr  9 07:42 moscow-time-wasm.oci
+moscow-time-wasm.oci: POSIX tar archive
+```
+
+After that, I imported the OCI archive into containerd and verified that the image entry was visible:
+
+```bash
+ctr images import --all-platforms \
+  --index-name docker.io/library/moscow-time-wasm:latest \
+  moscow-time-wasm.oci
+
+ctr images ls | grep -E 'moscow-time-wasm|wasi|wasm'
+```
+
+Output:
+
+```text id="r2z3wr"
+docker.io/library/moscow-time-wasm:latest       application/vnd.oci.image.index.v1+json    sha256:7b6bcba5c9d165bdf23add64a50740eb80f571a2bb153dd0f2cebac478b362f6 361.0 B wasi/wasm   -
+ghcr.io/containerd/runwasi/wasi-demo-app:latest application/vnd.oci.image.manifest.v1+json sha256:1a5ef678e7425a98de8166d9e289e09e21d8a82312ad7e5c8bf9b961bb1f2666 2.2 MiB wasip1/wasm -
+```
+
+This confirmed that the WASM image was present in containerd and recognized as a `wasi/wasm` image.
+
+### 3.5 Run the WASM container with `ctr`
+
+I ran the imported image in CLI mode using `ctr`, the Wasmtime runtime shim, and `MODE=once`.
+
+```bash
+NAME="wasi-once-$(date +%s)"
+ctr run --rm \
+  --runtime io.containerd.wasmtime.v1 \
+  --platform wasi/wasm \
+  --env MODE=once \
+  docker.io/library/moscow-time-wasm:latest "$NAME"
+````
+
+Output:
+
+```text
+{
+  "moscow_time": "2026-04-09 13:23:55 MSK",
+  "timestamp": 1775730235
+}
+```
+
+This showed that the WASM container executed successfully via `ctr` and produced the same JSON output as the traditional container.
+
+### 3.6 Record sizes
+
+I recorded the WASM binary size and the imported image entry from `ctr`.
+
+```bash
+ls -lh main.wasm
+ctr images ls | awk 'NR>1 && $1 ~ /moscow-time-wasm/ {print "IMAGE:", $1, "SIZE:", $4, "PLATFORMS:", $5}'
+```
+
+Output:
+
+```text id="9jw6or"
+-rwxr-xr-x 1 root root 2.4M Apr  9 07:42 main.wasm
+IMAGE: docker.io/library/moscow-time-wasm:latest SIZE: 361.0 PLATFORMS: B
+```
+
+So the WASM binary size is **2.4 MB**. The image entry was listed successfully in containerd and associated with the `wasi/wasm` platform.
+
+### 3.7 Startup benchmark
+
+I benchmarked the WASM container in CLI mode across five runs.
+
+```bash
+for i in 1 2 3 4 5; do
+  NAME="wasi-$(date +%s%N)-$i"
+  /usr/bin/time -f "%e" sh -c "ctr run --rm --runtime io.containerd.wasmtime.v1 --platform wasi/wasm --env MODE=once docker.io/library/moscow-time-wasm:latest $NAME >/dev/null" 2>&1
+done | awk '{sum+=$1; n++} END {printf("Average: %.4f seconds\n", sum/n)}'
+````
+
+Output:
+
+```text
+Average: 3.4620 seconds
+```
+
+So the average startup time for the WASM container in CLI mode was **3.4620 seconds**.
+
+
+### 3.8 Server mode limitation under plain WASI
+
+I also checked what happens if the same WASM image is started without `MODE=once`.
+
+```bash
+NAME="wasi-server-$(date +%s)"
+timeout 8s ctr run --rm \
+  --runtime io.containerd.wasmtime.v1 \
+  --platform wasi/wasm \
+  docker.io/library/moscow-time-wasm:latest "$NAME" 2>&1 | sed -n '1,40p' || true
+````
+
+Output:
+
+```text
+2026/04/09 10:23:59 Server starting on :8080
+2026/04/09 10:23:59 Netdev not set
+```
+
+### 3.9 Memory usage note
+
+Memory usage reporting for the WASM container was **N/A** in this task. Unlike the traditional Docker container in Task 2, this run used `ctr` with a WASM runtime shim, so the usual `docker stats` style reporting was not available in the same way.
+
+### Result
+
+Task 3 is completed.
+
+I used the **same `main.go` source file** as in the traditional container build, compiled it to WASM with TinyGo, packaged it as an OCI archive, imported it into containerd, and ran it with `ctr` using the `io.containerd.wasmtime.v1` runtime.
+
+The important results are:
+
+* TinyGo version: **0.39.0**
+* WASM binary size: **2.4 MB**
+* OCI archive size: **826 KB**
+* Imported image visible in `ctr` as a **`wasi/wasm` OCI image index**
+* Average startup time in CLI mode: **3.4620 seconds**
+* Plain WASI server mode under `ctr` does not support the normal HTTP server path in this setup
+* The same `main.wasm` can still be used with Spin for HTTP mode
+
+
+## Task 4 — Performance Comparison & Analysis
+
+In this task I compared the traditional Docker container and the WASM container built from the same `main.go` source file.
+
+### 4.1 Comparison table
+
+| Metric | Traditional Container | WASM Container | Improvement | Notes |
+|--------|----------------------|----------------|-------------|-------|
+| **Binary Size** | 4.5 MB | 2.4 MB | **46.67% smaller** | From `ls -lh` |
+| **Image Size** | 4.48047 MB | 826 KB OCI archive | **about 82.0% smaller** | Traditional size from `docker image inspect`, WASM package size from the built OCI archive |
+| **Startup Time (CLI)** | 0.56 s (560 ms) | 3.4620 s (3462 ms) | **Traditional was ~6.18x faster** | Average of 5 runs |
+| **Memory Usage** | 1.09MiB / 3.824GiB (0.03%) | N/A via `ctr` | N/A | `docker stats` available for Docker, not available in the same way for WASM via `ctr` |
+| **Base Image** | `scratch` | `scratch` | Same | Both use a minimal base |
+| **Source Code** | `main.go` | `main.go` | Identical | Same application source |
+| **Server Mode** | ✅ Works with `net/http` | ❌ Not via `ctr` <br> ✅ Via Spin (WAGI) | N/A | Plain WASI runtime does not provide the normal TCP server path |
+
+### 4.2 Improvement calculations
+
+For binary size:
+
+\[
+\frac{4.5 - 2.4}{4.5} \times 100 \approx 46.67\%
+\]
+
+So the WASM binary is about **46.67% smaller** than the traditional Linux binary.
+
+For packaged image size:
+
+\[
+\frac{4.48047 - 0.8066}{4.48047} \times 100 \approx 82.0\%
+\]
+
+So the OCI-packaged WASM artifact is about **82.0% smaller** than the traditional image.
+
+For startup time:
+
+\[
+\frac{3.4620}{0.56} \approx 6.18
+\]
+
+So in this environment, the **traditional container started about 6.18x faster** than the WASM container.
+
+### 4.3 Analysis
+
+#### 1. Binary size comparison
+
+The WASM binary is noticeably smaller because TinyGo produces a much lighter runtime than standard Go. The traditional build includes a full native Linux executable, while the WASM build is a compact module for the WASI target.
+
+TinyGo optimized away a large part of the normal Go runtime and only included what was actually needed for this program. It also produced a smaller output format than a stripped native ELF binary. In practice, this means less runtime baggage, less unused standard library code, and a much smaller final artifact.
+
+#### 2. Startup performance
+
+In theory, WASM can have very fast startup, especially in specialized serverless or edge runtimes. In my experiment, however, the WASM container was slower.
+
+The reason is that the measured startup path here included `ctr`, the Wasmtime shim, and WASM module instantiation on this specific host. That extra runtime setup cost was larger than the startup cost of the traditional container.
+
+The traditional container was already very lightweight:
+- static Go binary
+- `scratch` base image
+- no shell
+- no package manager
+- no extra runtime dependencies
+
+So even though WASM was smaller, the actual end-to-end startup path through `ctr` and Wasmtime was slower in this setup.
+
+Traditional containers still have overhead such as:
+- container creation
+- namespace and cgroup setup
+- process start
+- runtime bookkeeping
+
+But in this lab the traditional image was so minimal that this overhead stayed low.
+
+#### 3. Use case decision matrix
+
+I would choose **WASM** when:
+- I want a very small artifact
+- I care about portability across runtimes
+- the workload is short-lived and sandbox-friendly
+- the application can work in CLI mode or through a host-provided HTTP abstraction such as Spin/WAGI
+- I want the same binary to be reusable in edge or serverless environments
+
+I would choose **traditional containers** when:
+- I need normal networking and a standard `net/http` server
+- I want fewer runtime surprises
+- I need familiar observability and tooling such as `docker logs`, `docker stats`, and standard container workflows
+- I am deploying to a normal Docker or Kubernetes environment
+- startup latency on the target host matters more than artifact size
+
+### 4.4 Conclusion
+
+The most important result is that the **same `main.go` source file** worked for both targets.
+
+The WASM build was smaller, but on this host it was not faster. So the trade-off in this lab was clear:
+
+- **Traditional Docker** gave better startup performance, standard networking, and straightforward runtime observability.
+- **WASM** gave a smaller packaged artifact and better portability to WASI-style runtimes, but it came with networking limitations under plain `ctr` execution.
+
+For this particular application, I would use the traditional container for normal server deployment, and I would use the WASM build when targeting environments like Spin where the runtime provides the HTTP layer.
