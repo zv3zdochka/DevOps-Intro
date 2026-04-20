@@ -424,3 +424,16 @@ MD5 checksums help detect configuration changes because even a small change in t
 
 This is similar to GitOps tools like ArgoCD and their Sync Status. ArgoCD compares the desired state stored in Git with the live state in the cluster and marks the application as synced or out of sync. In this lab, the MD5 comparison plays the same role in a simplified form: matching hashes mean synced state, and different hashes mean drift.
 
+## Report
+
+In this lab, I simulated the basic GitOps workflow with simple Linux tools. First, I created a desired state file and a current state file. After that, I wrote a reconciliation script that compares both files and restores the current state if drift is detected.
+
+The results showed that the reconciliation loop works as expected. When I changed `current-state.txt` manually, the script detected the difference and replaced the drifted state with the correct state from `desired-state.txt`. This demonstrates the main GitOps idea: the declared state is the source of truth, and the system should always return to it.
+
+The continuous reconciliation test also showed self-healing behavior. After I introduced an extra change into the current state, the loop detected it automatically and fixed it during the next check. This means that even if someone changes the live state manually, the system can recover without manual correction.
+
+In the second part of the lab, I added health monitoring with MD5 checksums. This made it possible to detect whether the desired state and the current state were identical. When both files matched, the script reported `OK`. When the state was changed, it reported `CRITICAL` and wrote the mismatch to `health.log`.
+
+The monitoring script combined health checks and reconciliation into one loop. This showed how GitOps systems can both detect problems and recover from them continuously. In a real environment, tools like ArgoCD and Flux use the same general idea, but with Kubernetes resources instead of simple text files.
+
+Overall, this lab helped me understand the core GitOps principles in a practical way. Declarative configuration is useful because the expected state is written clearly and can be versioned in Git. Reconciliation helps prevent configuration drift, and health checks make the sync status visible. Together, these mechanisms create a simple self-healing system.
