@@ -1,24 +1,41 @@
-## Task 1 — Web Application Scanning with OWASP ZAP
+# Task 1 — Web Application Scanning with OWASP ZAP
 
-### Objective
+## 1. Start the vulnerable application
 
-In this task I scanned an intentionally vulnerable web application (OWASP Juice Shop) with OWASP ZAP on my VPS. The goal was to identify common web vulnerabilities, check HTTP security headers, and analyze the scan results.
+I deployed OWASP Juice Shop on my Linux VPS with Docker.
 
-### 1.1 Starting the target application
-
-First, I started the Juice Shop container locally on the VPS:
+### Command
 
 ```bash
 docker run -d --name juice-shop -p 3000:3000 bkimminich/juice-shop
 ````
 
-Then I waited until the application became available and checked it with `curl -I`:
+### Output
+
+```text
+9248a5eed1c5595fbe3e239f3c7aa9dfabbf7f572fc661691e426d4607b72c6a
+```
+
+After that I opened the application in the browser:
+
+```text
+http://95.182.115.130:3000
+```
+
+The page opened correctly and Juice Shop was running.
+![Juice Shop](screenshots/lab_9/img.png)
+
+## 2. Verify that the application is running
+
+I also checked it locally on the VPS.
+
+### Command
 
 ```bash
 curl -I http://127.0.0.1:3000
 ```
 
-Output:
+### Output
 
 ```text
 HTTP/1.1 200 OK
@@ -29,304 +46,419 @@ Feature-Policy: payment 'self'
 X-Recruiting: /#/jobs
 Accept-Ranges: bytes
 Cache-Control: public, max-age=0
-Last-Modified: Sun, 05 Apr 2026 14:59:33 GMT
-ETag: W/"124fa-19d5e28014e"
+Last-Modified: Mon, 20 Apr 2026 14:03:27 GMT
+ETag: W/"124fa-19dab3407d2"
 Content-Type: text/html; charset=UTF-8
 Content-Length: 75002
 Vary: Accept-Encoding
-Date: Sun, 05 Apr 2026 14:59:33 GMT
+Date: Mon, 20 Apr 2026 14:03:34 GMT
 Connection: keep-alive
 Keep-Alive: timeout=5
 ```
 
-This confirmed that the application was running correctly on port 3000.
+## 3. Run OWASP ZAP baseline scan
 
-### 1.2 Running ZAP on Linux VPS
+For Linux I used the host network mode, because this worked correctly on the VPS and allowed ZAP to scan the local application.
 
-Because I was running the lab on a Linux VPS, I could not use `host.docker.internal`, so I worked with the local container networking.
-
-At first I tried the baseline scan, but the first attempt failed because ZAP could not write files into the mounted directory. After that I created a writable `out` directory and ran a full ZAP scan from Docker with report generation enabled.
-
-Successful command:
+### Command
 
 ```bash
-docker run --name zap-full --network host -u zap -v "$PWD/out":/zap/wrk:rw -i ghcr.io/zaproxy/zaproxy:stable bash -lc '
-python3 -u /zap/zap-full-scan.py \
-  -t http://127.0.0.1:3000 \
-  -m 3 \
-  -T 15 \
-  -j \
-  -g gen-full.conf \
-  -r zap-full-report.html \
-  -w zap-full-report.md \
-  -J zap-full-report.json \
-  -I
-'
+cd ~/lab9/task1
+docker run --rm --network host -v "$(pwd)":/zap/wrk:rw \
+-t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py \
+-t http://127.0.0.1:3000 \
+-j \
+-a \
+-m 5 \
+-r zap-report-host.html | tee zap-host-output.txt
 ```
 
-ZAP also generated the following files:
+### Output
 
 ```text
--rw-r--r-- 1 1000 1000 8.5K Apr  5 17:46 out/gen-full.conf
--rw-r--r-- 1 1000 1000 187K Apr  5 17:46 out/zap-full-report.html
--rw-r--r-- 1 1000 1000  77K Apr  5 17:46 out/zap-full-report.json
--rw-r--r-- 1 1000 1000  64K Apr  5 17:46 out/zap-full-report.md
--rw-r--r-- 1 root root 104K Apr  5 17:46 zap-full-zap.log
-```
-
-### 1.3 Scan results
-
-The final scan completed successfully.
-
-Important part of the console output:
-
-```text
-Total of 201 URLs
-...
-WARN-NEW: Missing Anti-clickjacking Header [10020] x 1
-WARN-NEW: X-Content-Type-Options Header Missing [10021] x 3
-WARN-NEW: Content Security Policy (CSP) Header Not Set [10038] x 11
-WARN-NEW: Deprecated Feature Policy Header Set [10063] x 11
-WARN-NEW: Backup File Disclosure [10095] x 31
-WARN-NEW: Timestamp Disclosure - Unix [10096] x 9
-WARN-NEW: Cross-Domain Misconfiguration [10098] x 11
+Using the Automation Framework
+Total of 166 URLs
+PASS: Vulnerable JS Library (Powered by Retire.js) [10003]
+PASS: In Page Banner Information Leak [10009]
+PASS: Cookie No HttpOnly Flag [10010]
+PASS: Cookie Without Secure Flag [10011]
+PASS: Re-examine Cache-control Directives [10015]
+PASS: Cross-Domain JavaScript Source File Inclusion [10017]
+PASS: Content-Type Header Missing [10019]
+PASS: Information Disclosure - Debug Error Messages [10023]
+PASS: Information Disclosure - Sensitive Information in URL [10024]
+PASS: Information Disclosure - Sensitive Information in HTTP Referrer Header [10025]
+PASS: HTTP Parameter Override [10026]
+PASS: Information Disclosure - Suspicious Comments [10027]
+PASS: Off-site Redirect [10028]
+PASS: Cookie Poisoning [10029]
+PASS: User Controllable Charset [10030]
+PASS: User Controllable HTML Element Attribute (Potential XSS) [10031]
+PASS: Viewstate [10032]
+PASS: Directory Browsing [10033]
+PASS: Heartbleed OpenSSL Vulnerability (Indicative) [10034]
+PASS: Strict-Transport-Security Header [10035]
+PASS: HTTP Server Response Header [10036]
+PASS: Server Leaks Information via "X-Powered-By" HTTP Response Header Field(s) [10037]
+PASS: X-Backend-Server Header Information Leak [10039]
+PASS: Secure Pages Include Mixed Content [10040]
+PASS: HTTP to HTTPS Insecure Transition in Form Post [10041]
+PASS: HTTPS to HTTP Insecure Transition in Form Post [10042]
+PASS: User Controllable JavaScript Event (XSS) [10043]
+PASS: Big Redirect Detected (Potential Sensitive Information Leak) [10044]
+PASS: Retrieved from Cache [10050]
+PASS: X-ChromeLogger-Data (XCOLD) Header Information Leak [10052]
+PASS: Cookie without SameSite Attribute [10054]
+PASS: CSP [10055]
+PASS: X-Debug-Token Information Leak [10056]
+PASS: Username Hash Found [10057]
+PASS: X-AspNet-Version Response Header [10061]
+PASS: PII Disclosure [10062]
+PASS: Hash Disclosure [10097]
+PASS: Source Code Disclosure [10099]
+PASS: Weak Authentication Method [10105]
+PASS: Reverse Tabnabbing [10108]
+PASS: Authentication Request Identified [10111]
+PASS: Session Management Response Identified [10112]
+PASS: Verification Request Identified [10113]
+PASS: Script Served From Malicious Domain (polyfill) [10115]
+PASS: ZAP is Out of Date [10116]
+PASS: Absence of Anti-CSRF Tokens [10202]
+PASS: Script Passive Scan Rules [50001]
+PASS: Stats Passive Scan Rule [50003]
+PASS: Insecure JSF ViewState [90001]
+PASS: Java Serialization Object [90002]
+PASS: Sub Resource Integrity Attribute Missing [90003]
+PASS: Charset Mismatch [90011]
+PASS: Application Error Disclosure [90022]
+PASS: WSDL File Detection [90030]
+PASS: Loosely Scoped Cookie [90033]
+WARN-NEW: Missing Anti-clickjacking Header [10020] x 3
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHh_&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHI9p&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHIf9&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+WARN-NEW: X-Content-Type-Options Header Missing [10021] x 5
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHiH&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHM3 (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHh_&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHI9p&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHIf9&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+WARN-NEW: Content Security Policy (CSP) Header Not Set [10038] x 5
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/ (200 OK)
+        http://127.0.0.1:3000/ftp (200 OK)
+        http://127.0.0.1:3000/ftp/coupons_2013.md.bak (403 Forbidden)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+WARN-NEW: Storable and Cacheable Content [10049] x 6
+        http://127.0.0.1:3000/robots.txt (200 OK)
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/assets/public/favicon_js.ico (200 OK)
+        http://127.0.0.1:3000/chunk-24EZLZ4I.js (200 OK)
+WARN-NEW: Deprecated Feature Policy Header Set [10063] x 5
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/chunk-24EZLZ4I.js (200 OK)
+        http://127.0.0.1:3000/chunk-4MIYPPGW.js (200 OK)
+        http://127.0.0.1:3000/chunk-T3PSKZ45.js (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+WARN-NEW: Base64 Disclosure [10094] x 5
+        http://127.0.0.1:3000/ftp (200 OK)
+        http://127.0.0.1:3000/ftp/ (200 OK)
+        http://127.0.0.1:3000/ftp/quarantine (200 OK)
+        http://127.0.0.1:3000/main.js (200 OK)
+        http://127.0.0.1:3000/rest/continue-code (200 OK)
+WARN-NEW: Timestamp Disclosure - Unix [10096] x 5
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+WARN-NEW: Cross-Domain Misconfiguration [10098] x 5
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/assets/public/favicon_js.ico (200 OK)
+        http://127.0.0.1:3000/robots.txt (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+        http://127.0.0.1:3000/styles.css (200 OK)
+WARN-NEW: Modern Web Application [10109] x 5
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/ (200 OK)
+        http://127.0.0.1:3000/juice-shop/build/routes/fileServer.js:43:13 (200 OK)
+        http://127.0.0.1:3000/juice-shop/build/routes/fileServer.js:59:18 (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
 WARN-NEW: Dangerous JS Functions [10110] x 2
+        http://127.0.0.1:3000/chunk-LHKS7QUN.js (200 OK)
+        http://127.0.0.1:3000/main.js (200 OK)
+WARN-NEW: Full Path Disclosure [110009] x 6
+        http://127.0.0.1:3000/ftp/coupons_2013.md.bak (403 Forbidden)
+        http://127.0.0.1:3000/ftp/eastere.gg (403 Forbidden)
+        http://127.0.0.1:3000/ftp/encrypt.pyc (403 Forbidden)
+        http://127.0.0.1:3000/ftp/package-lock.json.bak (403 Forbidden)
+        http://127.0.0.1:3000/ftp/package.json.bak (403 Forbidden)
 WARN-NEW: Private IP Disclosure [2] x 1
-WARN-NEW: Session ID in URL Rewrite [3] x 9
-WARN-NEW: SQL Injection [40018] x 1
-WARN-NEW: Bypassing 403 [40038] x 6
-WARN-NEW: CORS Misconfiguration [40040] x 158
+        http://127.0.0.1:3000/rest/admin/application-configuration (200 OK)
+WARN-NEW: Session ID in URL Rewrite [3] x 5
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHiH&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=websocket&sid=TKRGnI0nC0nMsUTFAAAE (101 Switching Protocols)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHHh_&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHI9p&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
+        http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling&t=PshHIf9&sid=TKRGnI0nC0nMsUTFAAAE (200 OK)
 WARN-NEW: Cross-Origin-Embedder-Policy Header Missing or Invalid [90004] x 10
-
-FAIL-NEW: 0     FAIL-INPROG: 0  WARN-NEW: 14    WARN-INPROG: 0  INFO: 0 IGNORE: 0       PASS: 127
-ZAP_EXIT_CODE=0
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/ (200 OK)
+        http://127.0.0.1:3000/ftp (200 OK)
+        http://127.0.0.1:3000/juice-shop/build/routes/fileServer.js:59:18 (200 OK)
+        http://127.0.0.1:3000/sitemap.xml (200 OK)
+WARN-NEW: Sec-Fetch-Dest Header is Missing [90005] x 8
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/robots.txt (200 OK)
+        http://127.0.0.1:3000 (200 OK)
+        http://127.0.0.1:3000/robots.txt (200 OK)
+        http://127.0.0.1:3000 (200 OK)
+FAIL-NEW: 0     FAIL-INPROG: 0  WARN-NEW: 15    WARN-INPROG: 0  INFO: 0 IGNORE: 0       PASS: 55
 ```
 
-**Number of Medium risk vulnerabilities found:**
-`[replace with the exact Medium number from the HTML report overview]`
+I also checked that the HTML report was created.
 
-Even from the console output it is clear that the application has multiple security issues, including SQL Injection, 403 bypass, backup file disclosure, missing security headers, and CORS misconfiguration.
+### Command
 
-### 1.4 Two most interesting vulnerabilities
+```bash
+ls -lh zap-host-output.txt zap-report-host.html
+```
 
-**1. SQL Injection**
-
-One of the most important findings was SQL Injection:
+### Output
 
 ```text
-WARN-NEW: SQL Injection [40018] x 1
-http://127.0.0.1:3000/rest/products/search?q=%27%28 (500 Internal Server Error)
+-rw-r--r-- 1 root root 7.2K Apr 20 14:25 zap-host-output.txt
+-rw-r--r-- 1 1000 1000 149K Apr 20 14:25 zap-report-host.html
 ```
 
-This means user input in the search request was handled in an unsafe way and caused a server-side error during injection testing. SQL Injection is dangerous because it can allow an attacker to read or modify database data, bypass application logic, or in some cases get deeper access to the system.
+## 4. ZAP HTML report overview
 
-**2. Backup File Disclosure**
+![ZAP report overview](screenshots/lab_9/img_1.png)
+![ZAP report overview](screenshots/lab_9/img_2.png)
 
-Another interesting issue was Backup File Disclosure:
+## 5. Results
 
-```text
-WARN-NEW: Backup File Disclosure [10095] x 31
-http://127.0.0.1:3000/ftp/quarantine.bak (200 OK)
-http://127.0.0.1:3000/ftp/quarantine.backup (200 OK)
-http://127.0.0.1:3000/ftp/quarantine.bac (200 OK)
-http://127.0.0.1:3000/ftp/quarantine.zip (200 OK)
-http://127.0.0.1:3000/ftp/quarantine.tar (200 OK)
-```
+### Number of Medium risk vulnerabilities found
 
-This means backup copies of files were accessible directly from the web application. This is dangerous because backup files may contain source code, credentials, configuration, logs, or other sensitive information that should never be public.
+According to the HTML report, ZAP found **4 Medium risk vulnerabilities**.
 
-### 1.5 Security headers status
+### Two most interesting vulnerabilities
 
-From the initial HTTP check of the main page, some headers were already present:
+#### 1. Content Security Policy (CSP) Header Not Set
+
+This means the application does not define a Content Security Policy.
+CSP helps the browser understand which scripts and resources are trusted.
+If it is missing, the site is more exposed to XSS and content injection problems.
+
+#### 2. Session ID in URL Rewrite
+
+This means a session identifier appears in the URL.
+This is dangerous because URLs can be saved in browser history, logs, and proxy records.
+If someone gets that URL, they may get access to the session.
+
+### Other Medium findings from the report
+
+* Cross-Domain Misconfiguration
+* Missing Anti-clickjacking Header
+
+## 6. Security headers status
+
+### Present headers
+
+From the local response check I saw these headers:
 
 * `X-Content-Type-Options: nosniff`
 * `X-Frame-Options: SAMEORIGIN`
 * `Feature-Policy: payment 'self'`
+* `Access-Control-Allow-Origin: *`
 
-However, the full ZAP scan showed that security headers were not configured consistently across all responses.
+### Missing or problematic headers
 
-**Present on the main page:**
+From the ZAP report I saw these missing or inconsistent headers:
 
-* `X-Frame-Options`
-* `X-Content-Type-Options`
-* `Feature-Policy`
+* `Content-Security-Policy` was not set
+* Anti-clickjacking header was missing on some responses
+* `X-Content-Type-Options` was missing on some responses
+* `Cross-Origin-Embedder-Policy` was missing or invalid on some responses
+* `Sec-Fetch-Dest` header was missing on some responses
 
-**Missing or problematic on other responses according to ZAP:**
+### Why they matter
 
-* Missing Anti-clickjacking Header
-* X-Content-Type-Options Header Missing
-* Content Security Policy (CSP) Header Not Set
-* Cross-Origin-Embedder-Policy Header Missing or Invalid
-* Deprecated Feature Policy Header Set
+These headers help protect the application from common browser-based attacks.
+For example, CSP helps reduce XSS risk, anti-clickjacking headers help protect against UI redressing, and `X-Content-Type-Options` helps stop MIME-type confusion.
 
-Why they matter:
+## 7. Most interesting vulnerability
 
-* **X-Frame-Options / anti-clickjacking protection** helps prevent the site from being embedded into a malicious page.
-* **X-Content-Type-Options** helps prevent MIME-type confusion.
-* **Content-Security-Policy (CSP)** reduces the risk of XSS and unsafe resource loading.
-* **Cross-Origin-Embedder-Policy** is part of stronger browser isolation controls.
-* **Deprecated Feature-Policy** shows that an older header is still being used instead of a modern policy approach.
+The most interesting vulnerability for me was **Session ID in URL Rewrite**.
+I think it is important because session data should not be visible in URLs. It can easily leak through logs, browser history, or copied links.
 
-So, the application had some protection on the main page, but overall the header configuration was incomplete and inconsistent.
+## 8. Analysis
 
-### 1.6 Screenshot
+In this scan, the most common problems were security misconfigurations and missing protection headers.
+I think this is common in real web applications too, especially in modern JavaScript apps with many endpoints and different responses.
+Even when the main page looks fine, some internal routes or socket endpoints may still miss important protections.
 
-Add screenshot of the generated HTML report overview here.
+Web vulnerabilities are often not only about SQL injection or XSS payloads.
+Very often the problem is weak configuration, missing headers, unsafe session handling, and too much exposed technical information.
 
-Example:
+## 9. Cleanup
 
-```md
-![OWASP ZAP report overview](images/zap-full-report-overview.png)
+### Command
+
+```bash
+docker stop juice-shop && docker rm juice-shop
 ```
 
-### 1.7 Analysis
 
-The most common issues in this scan were configuration and exposure problems: missing security headers, cross-origin policy issues, backup file disclosure, and access control weaknesses. These are common in real web applications because they often come from default settings, forgotten files, weak deployment hygiene, or inconsistent server configuration.
+# Task 2 — Container Vulnerability Scanning with Trivy
 
-At the same time, the scan also found a more serious vulnerability class — SQL Injection. This shows that web applications can have both simple misconfigurations and deeper input-handling flaws at the same time.
+## 1. Scan container image
 
-In my opinion, the main lesson from this task is that even a locally deployed training application quickly shows how many different problem categories a web scanner can detect: input validation issues, missing browser protections, information disclosure, and broken access control.
+I scanned the `bkimminich/juice-shop` image with Trivy on my Linux VPS.  
+First I pulled the image, then I ran Trivy and saved the results in both table and JSON formats.
 
+### Commands
 
-## Task 2 — Container Vulnerability Scanning with Trivy
+```bash
+mkdir -p ~/lab9/task2 && cd ~/lab9/task2
 
-### Objective
+docker pull bkimminich/juice-shop
 
-In this task I scanned the `bkimminich/juice-shop` container image with Trivy in order to identify high and critical vulnerabilities before deployment. The goal was to check the image for known package-level security issues and understand what kinds of risks exist inside the container.
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(pwd)":/work \
+aquasec/trivy:latest image \
+--severity HIGH,CRITICAL \
+--format table \
+-o /work/trivy-table.txt \
+bkimminich/juice-shop
 
-### 2.1 Running the Trivy scan
-
-I ran the scan on my VPS using Docker. The original lab command uses `aquasec/trivy:latest`, but on my side that image tag was not available, so I used the current working Trivy image from GHCR and scanned the same target image with the required severity filter.
-
-Command used:
-
-```bash id="srfhw8"
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$PWD":/work \
-  -w /work \
-  ghcr.io/aquasecurity/trivy:0.69.3 image \
-  --scanners vuln \
-  --severity HIGH,CRITICAL \
-  --format table \
-  --output trivy-report.txt \
-  bkimminich/juice-shop
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(pwd)":/work \
+aquasec/trivy:latest image \
+--severity HIGH,CRITICAL \
+--format json \
+-o /work/trivy.json \
+bkimminich/juice-shop
 ````
 
-I also generated a JSON report for easier review:
+### Main output
 
-```bash id="bwndx3"
-docker run --rm \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v "$PWD":/work \
-  -w /work \
-  ghcr.io/aquasecurity/trivy:0.69.3 image \
-  --scanners vuln \
-  --severity HIGH,CRITICAL \
-  --format json \
-  --output trivy-report.json \
-  bkimminich/juice-shop
-```
-
-### 2.2 Important terminal output
-
-Relevant part of the Trivy output:
-
-```text id="8mu1xh"
-2026-04-05T19:05:02Z    INFO    [vulndb] Need to update DB
-2026-04-05T19:05:02Z    INFO    [vulndb] Downloading vulnerability DB...
+```text
+Using default tag: latest
+latest: Pulling from bkimminich/juice-shop
 ...
-2026-04-05T19:05:42Z    INFO    Detected OS     family="debian" version="13.4"
-2026-04-05T19:05:42Z    INFO    [debian] Detecting vulnerabilities...   os_version="13" pkg_num=13
-2026-04-05T19:05:42Z    INFO    Number of language-specific files       num=1
-2026-04-05T19:05:42Z    INFO    [node-pkg] Detecting vulnerabilities...
-2026-04-05T19:05:42Z    WARN    Using severities from other vendors for some vulnerabilities.
-2026-04-05T19:05:43Z    INFO    Table result includes only package filenames. Use '--format json' option to get the full path to the package file.
-```
+Status: Downloaded newer image for bkimminich/juice-shop:latest
+docker.io/bkimminich/juice-shop:latest
 
-Report summary:
-
-```text id="qm0i60"
-Report Summary
-
-Target                                               Type      Vulnerabilities
-bkimminich/juice-shop (debian 13.4)                  debian    0
+Unable to find image 'aquasec/trivy:latest' locally
+latest: Pulling from aquasec/trivy
 ...
-Node.js (node-pkg)
-==================
-Total: 53 (HIGH: 44, CRITICAL: 9)
+Status: Downloaded newer image for aquasec/trivy:latest
+
+2026-04-20T14:43:27Z INFO Detected OS family="debian" version="13.4"
+2026-04-20T14:43:27Z INFO [debian] Detecting vulnerabilities... os_version="13" pkg_num=13
+2026-04-20T14:43:27Z INFO Number of language-specific files num=1
+2026-04-20T14:43:27Z INFO [node-pkg] Detecting vulnerabilities...
+
+2026-04-20T14:43:59Z INFO Detected OS family="debian" version="13.4"
+2026-04-20T14:43:59Z INFO [debian] Detecting vulnerabilities... os_version="13" pkg_num=13
+2026-04-20T14:43:59Z INFO Number of language-specific files num=1
+2026-04-20T14:43:59Z INFO [node-pkg] Detecting vulnerabilities...
+
+CRITICAL = 9
+HIGH = 44
+
+EXAMPLE_PACKAGES_AND_CVES:
+base64url | NSWG-ECO-428 | HIGH
+braces | CVE-2024-4068 | HIGH
+crypto-js | CVE-2023-46233 | CRITICAL
+express-jwt | CVE-2020-15084 | HIGH
+http-cache-semantics | CVE-2022-25881 | HIGH
+jsonwebtoken | CVE-2015-9235 | CRITICAL
+jsonwebtoken | CVE-2022-23539 | HIGH
+jsonwebtoken | NSWG-ECO-17 | HIGH
+jws | CVE-2016-1000223 | HIGH
+jws | CVE-2025-65945 | HIGH
+
+MOST_COMMON_CVE_CATEGORY = CVE
 ```
 
-Generated files:
+## 2. Saved report files
 
-```text id="4ewmbt"
--rw-r--r-- 1 root root 855K Apr  5 19:06 trivy-report.json
--rw-r--r-- 1 root root 578K Apr  5 19:05 trivy-report.txt
+I saved the scan results into two files.
+
+### Command
+
+```bash
+ls -lh trivy-table.txt trivy.json
 ```
 
-### 2.3 Key findings
+### Output
 
-**Total number of CRITICAL vulnerabilities:** 9
-**Total number of HIGH vulnerabilities:** 44 
-
-The scan showed that the Debian base layer had no high or critical issues, while the vulnerable findings came from Node.js dependencies inside the application.  
-
-Examples of vulnerable packages with CVE IDs:
-
-1. **braces** — `CVE-2024-4068` — HIGH
-   Installed version: `2.3.2`
-   Fixed version: `3.0.3`
-   Issue: the package fails to limit the number of characters it can handle. 
-
-2. **lodash** — `CVE-2019-10744` — CRITICAL
-   Installed version: `2.4.2`
-   Fixed version: `4.17.12`
-   Issue: prototype pollution in `defaultsDeep`, which can lead to modification of object properties. 
-
-Another critical example from the scan:
-
-* **vm2** — `CVE-2023-32314` — CRITICAL
-  Installed version: `3.9.17`
-  Fixed version: `3.9.18`
-  Issue: sandbox escape. 
-
-### 2.4 Most common vulnerability type
-
-The dominant problem in this image was not the OS layer, but vulnerable **Node.js third-party dependencies**. The scan summary shows `0` vulnerabilities in the Debian base image and `53` in `node-pkg`, so the main risk clearly came from application libraries rather than the container base system.  
-
-From the visible findings, the recurring vulnerability patterns included:
-
-* prototype pollution,
-* sandbox escape,
-* denial of service,
-* path traversal / file overwrite issues.
-
-So the most common issue category in practice was **insecure application dependencies in the Node.js ecosystem**.
-
-### 2.5 Screenshot
-
-Add a screenshot of the terminal output with the vulnerability summary and critical findings here.
-
-Example:
-
-```md id="v2b0c9"
-![Trivy scan output](images/trivy-critical-findings.png)
+```text
+-rw-r--r-- 1 root root 630K Apr 20 14:43 trivy-table.txt
+-rw-r--r-- 1 root root 876K Apr 20 14:43 trivy.json
 ```
 
-### 2.6 Analysis
+## 3. Screenshot of Trivy findings
 
-Container image scanning is important before production deployment because an application can inherit security problems from both the base image and its dependencies. In this case, the operating system layer was clean, but the Node.js dependency tree still contained many serious issues. This means that checking only the base image is not enough.
+![Trivy terminal output](screenshots/lab_9/img_3.png)
 
-A vulnerable container can be deployed successfully and still contain known exploitable packages. If such an image reaches production, an attacker may take advantage of dependency flaws such as prototype pollution, sandbox escape, path traversal, or denial of service. Scanning early helps detect these problems before release and gives the team a chance to upgrade or replace risky packages.
+## 4. Results
 
-### 2.7 Reflection: CI/CD integration
+### Total number of vulnerabilities
 
-I would integrate Trivy into CI/CD in a simple way:
+The Trivy report found:
 
-1. Run Trivy automatically on every build or pull request.
-2. Save the scan results as artifacts (`table` or `json` reports).
-3. Fail the pipeline if any CRITICAL vulnerabilities are found.
-4. Optionally fail or warn on HIGH vulnerabilities depending on project policy.
-5. Add a regular scheduled scan for base images and dependencies, because new CVEs can appear even when the code itself has not changed.
+* **CRITICAL:** 9
+* **HIGH:** 44
 
-This would make vulnerability scanning part of the normal delivery process instead of a manual step at the very end.
+### Two vulnerable packages with CVE IDs
+
+#### 1. crypto-js — CVE-2023-46233
+
+This package had a **CRITICAL** vulnerability.
+The report says that `crypto-js` version `3.3.0` is vulnerable and the fixed version is `4.2.0`.
+
+#### 2. jsonwebtoken — CVE-2015-9235
+
+This package also had a **CRITICAL** vulnerability.
+The report shows old `jsonwebtoken` versions with a verification bypass issue.
+The fixed version is `4.2.2`.
+
+### Other examples from the report
+
+* `express-jwt` — `CVE-2020-15084` — HIGH
+* `braces` — `CVE-2024-4068` — HIGH
+* `http-cache-semantics` — `CVE-2022-25881` — HIGH
+
+### Most common vulnerability type
+
+The most common vulnerability category in my parsed output was **CVE**.
+
+## 5. Analysis
+
+Container image scanning is important before production because vulnerabilities are often already inside the image before the container even starts.
+If a vulnerable package is shipped into production, the application can be exposed even if my own code is correct.
+
+This scan shows that the Juice Shop image has many risky dependencies, especially in Node.js packages.
+Some of them are critical and can lead to serious problems like authorization bypass, weak cryptography, command injection, or token verification issues.
+
+Scanning images early helps catch these problems before deployment.
+It is much easier to fix them during build time than after the service is already running.
+
+## 6. Reflection: CI/CD integration
+
+I would add Trivy to the CI/CD pipeline after the image build step.
+The pipeline should automatically scan every new image and save the report as an artifact.
+
+If CRITICAL vulnerabilities are found, I would fail the pipeline.
+If only HIGH vulnerabilities are found, I would either fail the build too or at least require manual review, depending on the project rules.
+
+I would also keep the scan reports for history, so the team can track whether the security state of the image is getting better or worse over time.
+
+## 7. Cleanup
+
+### Command
+
+```bash
+docker rmi bkimminich/juice-shop
+```
