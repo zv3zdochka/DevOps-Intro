@@ -310,4 +310,155 @@ docker stop juice-shop && docker rm juice-shop
 ```
 
 
+# Task 2 — Container Vulnerability Scanning with Trivy
 
+## 1. Scan container image
+
+I scanned the `bkimminich/juice-shop` image with Trivy on my Linux VPS.  
+First I pulled the image, then I ran Trivy and saved the results in both table and JSON formats.
+
+### Commands
+
+```bash
+mkdir -p ~/lab9/task2 && cd ~/lab9/task2
+
+docker pull bkimminich/juice-shop
+
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(pwd)":/work \
+aquasec/trivy:latest image \
+--severity HIGH,CRITICAL \
+--format table \
+-o /work/trivy-table.txt \
+bkimminich/juice-shop
+
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$(pwd)":/work \
+aquasec/trivy:latest image \
+--severity HIGH,CRITICAL \
+--format json \
+-o /work/trivy.json \
+bkimminich/juice-shop
+````
+
+### Main output
+
+```text
+Using default tag: latest
+latest: Pulling from bkimminich/juice-shop
+...
+Status: Downloaded newer image for bkimminich/juice-shop:latest
+docker.io/bkimminich/juice-shop:latest
+
+Unable to find image 'aquasec/trivy:latest' locally
+latest: Pulling from aquasec/trivy
+...
+Status: Downloaded newer image for aquasec/trivy:latest
+
+2026-04-20T14:43:27Z INFO Detected OS family="debian" version="13.4"
+2026-04-20T14:43:27Z INFO [debian] Detecting vulnerabilities... os_version="13" pkg_num=13
+2026-04-20T14:43:27Z INFO Number of language-specific files num=1
+2026-04-20T14:43:27Z INFO [node-pkg] Detecting vulnerabilities...
+
+2026-04-20T14:43:59Z INFO Detected OS family="debian" version="13.4"
+2026-04-20T14:43:59Z INFO [debian] Detecting vulnerabilities... os_version="13" pkg_num=13
+2026-04-20T14:43:59Z INFO Number of language-specific files num=1
+2026-04-20T14:43:59Z INFO [node-pkg] Detecting vulnerabilities...
+
+CRITICAL = 9
+HIGH = 44
+
+EXAMPLE_PACKAGES_AND_CVES:
+base64url | NSWG-ECO-428 | HIGH
+braces | CVE-2024-4068 | HIGH
+crypto-js | CVE-2023-46233 | CRITICAL
+express-jwt | CVE-2020-15084 | HIGH
+http-cache-semantics | CVE-2022-25881 | HIGH
+jsonwebtoken | CVE-2015-9235 | CRITICAL
+jsonwebtoken | CVE-2022-23539 | HIGH
+jsonwebtoken | NSWG-ECO-17 | HIGH
+jws | CVE-2016-1000223 | HIGH
+jws | CVE-2025-65945 | HIGH
+
+MOST_COMMON_CVE_CATEGORY = CVE
+```
+
+## 2. Saved report files
+
+I saved the scan results into two files.
+
+### Command
+
+```bash
+ls -lh trivy-table.txt trivy.json
+```
+
+### Output
+
+```text
+-rw-r--r-- 1 root root 630K Apr 20 14:43 trivy-table.txt
+-rw-r--r-- 1 root root 876K Apr 20 14:43 trivy.json
+```
+
+## 3. Screenshot of Trivy findings
+
+![Trivy terminal output](screenshots/lab_9/img_3.png)
+
+## 4. Results
+
+### Total number of vulnerabilities
+
+The Trivy report found:
+
+* **CRITICAL:** 9
+* **HIGH:** 44
+
+### Two vulnerable packages with CVE IDs
+
+#### 1. crypto-js — CVE-2023-46233
+
+This package had a **CRITICAL** vulnerability.
+The report says that `crypto-js` version `3.3.0` is vulnerable and the fixed version is `4.2.0`.
+
+#### 2. jsonwebtoken — CVE-2015-9235
+
+This package also had a **CRITICAL** vulnerability.
+The report shows old `jsonwebtoken` versions with a verification bypass issue.
+The fixed version is `4.2.2`.
+
+### Other examples from the report
+
+* `express-jwt` — `CVE-2020-15084` — HIGH
+* `braces` — `CVE-2024-4068` — HIGH
+* `http-cache-semantics` — `CVE-2022-25881` — HIGH
+
+### Most common vulnerability type
+
+The most common vulnerability category in my parsed output was **CVE**.
+
+## 5. Analysis
+
+Container image scanning is important before production because vulnerabilities are often already inside the image before the container even starts.
+If a vulnerable package is shipped into production, the application can be exposed even if my own code is correct.
+
+This scan shows that the Juice Shop image has many risky dependencies, especially in Node.js packages.
+Some of them are critical and can lead to serious problems like authorization bypass, weak cryptography, command injection, or token verification issues.
+
+Scanning images early helps catch these problems before deployment.
+It is much easier to fix them during build time than after the service is already running.
+
+## 6. Reflection: CI/CD integration
+
+I would add Trivy to the CI/CD pipeline after the image build step.
+The pipeline should automatically scan every new image and save the report as an artifact.
+
+If CRITICAL vulnerabilities are found, I would fail the pipeline.
+If only HIGH vulnerabilities are found, I would either fail the build too or at least require manual review, depending on the project rules.
+
+I would also keep the scan reports for history, so the team can track whether the security state of the image is getting better or worse over time.
+
+## 7. Cleanup
+
+### Command
+
+```bash
+docker rmi bkimminich/juice-shop
+```
