@@ -45,13 +45,13 @@ Another reason is operational simplicity. Artifact Registry has strong IAM integ
 At the same time, for a **container-only** multi-cloud strategy, Azure Container Registry and Amazon ECR are also strong choices because they both support OCI artifacts and production-grade security and replication features. But for the broader “artifact registry” category, GCP has the clearest all-in-one model. ([AWS Documentation][1])
 
 
-[1]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html?utm_source=chatgpt.com "What is Amazon Elastic Container Registry? - Amazon ECR"
-[2]: https://docs.cloud.google.com/artifact-registry/docs/overview?utm_source=chatgpt.com "Artifact Registry overview"
-[3]: https://docs.aws.amazon.com/codeartifact/?utm_source=chatgpt.com "AWS CodeArtifact Documentation"
-[4]: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-concepts?utm_source=chatgpt.com "About Registries, Repositories, Images, and Artifacts"
-[5]: https://azure.microsoft.com/en-us/products/devops/artifacts?utm_source=chatgpt.com "Azure Artifacts"
-[6]: https://azure.microsoft.com/en-us/products/container-registry?utm_source=chatgpt.com "Azure Container Registry"
-[7]: https://docs.cloud.google.com/artifact-registry/docs?utm_source=chatgpt.com "Artifact Registry documentation"
+[1]: https://docs.aws.amazon.com/AmazonECR/latest/userguide/what-is-ecr.html "What is Amazon Elastic Container Registry? - Amazon ECR"
+[2]: https://docs.cloud.google.com/artifact-registry/docs/overview "Artifact Registry overview"
+[3]: https://docs.aws.amazon.com/codeartifact/ "AWS CodeArtifact Documentation"
+[4]: https://learn.microsoft.com/en-us/azure/container-registry/container-registry-concepts "About Registries, Repositories, Images, and Artifacts"
+[5]: https://azure.microsoft.com/en-us/products/devops/artifacts "Azure Artifacts"
+[6]: https://azure.microsoft.com/en-us/products/container-registry "Azure Container Registry"
+[7]: https://docs.cloud.google.com/artifact-registry/docs "Artifact Registry documentation"
 
 ## Task 2 — Serverless Computing Platform Research
 
@@ -106,7 +106,7 @@ The main disadvantages are cold starts, execution limits, and platform-specific 
 [6]: https://azure.microsoft.com/en-us/pricing/details/functions/ "Pricing - Functions | Microsoft Azure"
 [7]: https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html "Lambda runtimes - AWS Lambda"
 [8]: https://docs.aws.amazon.com/lambda/latest/dg/concepts-event-driven-architectures.html "Creating event-driven architectures with Lambda - AWS Lambda"
-[9]: https://docs.aws.amazon.com/lambda/latest/dg/configuration-timeout.html?utm_source=chatgpt.com "Configure Lambda function timeout"
+[9]: https://docs.aws.amazon.com/lambda/latest/dg/configuration-timeout.html "Configure Lambda function timeout"
 [10]: https://docs.cloud.google.com/run/docs/tips/general "General development tips  |  Cloud Run  |  Google Cloud Documentation"
 [11]: https://docs.cloud.google.com/run/docs/configuring/request-timeout "Configure request timeout for services  |  Cloud Run  |  Google Cloud Documentation"
 [12]: https://cloud.google.com/run "Cloud Run | Google Cloud"
