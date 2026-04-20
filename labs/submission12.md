@@ -955,17 +955,19 @@ I recorded the WASM binary size and the imported image entry from `ctr`.
 
 ```bash
 ls -lh main.wasm
-ctr images ls | awk 'NR>1 && $1 ~ /moscow-time-wasm/ {print "IMAGE:", $1, "SIZE:", $4, "PLATFORMS:", $5}'
-```
+ctr images ls | grep moscow-time-wasm
+````
 
 Output:
 
-```text id="9jw6or"
+```text
 -rwxr-xr-x 1 root root 2.4M Apr  9 07:42 main.wasm
-IMAGE: docker.io/library/moscow-time-wasm:latest SIZE: 361.0 PLATFORMS: B
+docker.io/library/moscow-time-wasm:latest       application/vnd.oci.image.index.v1+json    sha256:7b6bcba5c9d165bdf23add64a50740eb80f571a2bb153dd0f2cebac478b362f6 361.0 B wasi/wasm   -
 ```
 
-So the WASM binary size is **2.4 MB**. The image entry was listed successfully in containerd and associated with the `wasi/wasm` platform.
+So the WASM binary size is **2.4 MB**.
+From `ctr images ls`, the imported image entry was visible in containerd as a **`wasi/wasm` OCI image index**, and the listed image entry size was **361.0 B**.
+The packaged OCI archive created during the build was **826 KB**, which is a more practical size indicator for the WASM container artifact in this lab.
 
 ### 3.7 Startup benchmark
 
@@ -1020,6 +1022,7 @@ The important results are:
 
 * TinyGo version: **0.39.0**
 * WASM binary size: **2.4 MB**
+* WASI image entry from `ctr images ls`: **361.0 B**
 * OCI archive size: **826 KB**
 * Imported image visible in `ctr` as a **`wasi/wasm` OCI image index**
 * Average startup time in CLI mode: **3.4620 seconds**
