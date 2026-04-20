@@ -27,7 +27,7 @@ I excluded the monitoring commands themselves (`ps`, `top`, `htop`, `iotop`) whe
 **Top I/O consumers**
 1. `jbd2/vda1-8` — main write activity, up to about `176.97 K/s`
 2. `python3 /usr/sbin/iotop -b -n 3 -o` — small write activity caused by monitoring itself
-3. No other meaningful I/O-heavy process was visible during the sampling window
+3. Other processes showed negligible I/O activity during the sampling window
 
 #### Command outputs
 
@@ -214,6 +214,7 @@ The browser check does the following:
 - checks that the browser is redirected to a URL containing `iana.org`
 
 This check is more realistic than a simple availability check because it validates visible content and a user-facing interaction.
+I also used this browser check to observe page responsiveness. For this website, slow loading would also be treated as a reliability issue, because users may experience the site as unavailable even if it still returns HTTP 200. This means the check covers not only content and interaction, but also basic performance from the user perspective.
 
 ### 2.3 Alert Setup
 
