@@ -501,3 +501,5 @@ Nix-based Docker images provide several practical benefits:
 * builds are easier to audit and compare;
 * this reduces "works on my machine" problems in CI/CD and collaboration.
 
+
+
